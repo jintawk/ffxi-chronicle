@@ -1,0 +1,22 @@
+-- Mission names: zilart (extracted from DAT 0xD9A6)
+return {
+    [0] = 'The New Frontier',
+    [2] = 'The Outlands',
+    [4] = 'Welcome t\'Norg',
+    [6] = 'Kazham\'s Chieftainess',
+    [8] = 'The Temple of Uggalepih',
+    [10] = 'Headstone Pilgrimage',
+    [12] = 'Through the Quicksand Caves',
+    [14] = 'The Chamber of Oracles',
+    [16] = 'Return to Delkfutt\'s Tower',
+    [18] = 'Ro\'Maeve',
+    [20] = 'The Temple of Desolation',
+    [22] = 'The Hall of the Gods',
+    [23] = 'The Mithra and the Crystal',
+    [24] = 'The Gate of the Gods',
+    [26] = 'Ark Angels',
+    [27] = 'The Sealed Shrine',
+    [28] = 'The Celestial Nexus',
+    [30] = 'Awakening',
+    [31] = 'The Last Verse',
+}
