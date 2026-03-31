@@ -710,6 +710,12 @@ local function render_item_list(panel, cx, cy, cw, params)
     panel:add_child(quest_list, cx, cy)
     quest_list:set_items(items)
 
+    -- Restore scroll offset from previous render
+    if params.scroll_offset then
+        quest_list:scroll_to_offset(params.scroll_offset)
+    end
+    state.quest_list_widget = quest_list
+
     -- Adjust panel content height
     local total_row_h = theme.quest_row_height + theme.quest_row_gap
     local list_height = visible_count * total_row_h - theme.quest_row_gap
@@ -1163,6 +1169,12 @@ local function render_guide(panel, cx, cy, cw, params)
         panel:add_child(scroll_list, cx, cy)
         scroll_list:set_items(walk_lines)
 
+        -- Restore scroll offset from previous render
+        if params.walk_scroll_offset then
+            scroll_list:scroll_to_offset(params.walk_scroll_offset)
+        end
+        state.walk_list_widget = scroll_list
+
         local list_height = visible_count * theme.line_height
         cy = cy + list_height
     end
@@ -1182,6 +1194,18 @@ render_current = function()
     -- Remember position and visibility
     local px, py = panel:get_pos()
     local was_visible = panel:visible()
+
+    -- Capture scroll offsets before clearing widgets
+    local cv = state.current_view
+    if cv then
+        if cv.view_type == 'item_list' and state.quest_list_widget then
+            cv.params.scroll_offset = state.quest_list_widget._scroll_offset
+        elseif cv.view_type == 'guide' and state.walk_list_widget then
+            cv.params.walk_scroll_offset = state.walk_list_widget._scroll_offset
+        end
+    end
+    state.quest_list_widget = nil
+    state.walk_list_widget = nil
 
     -- Clear existing content children
     panel:clear_children()
