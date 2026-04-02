@@ -268,7 +268,10 @@ local function render_top_level(panel, cx, cy, cw)
     local pct_val = pct(tab_data.completed, tab_data.total)
     local pct_fmt = string.format('%d%%', pct_val)
     local pct_width = #pct_fmt * theme.header_pct_char_width
-    local pct_color = pct_val >= 100 and theme.accent_gold or theme.accent
+    local pct_color = pct_val >= 100 and theme.accent_gold
+        or pct_val >= 75 and theme.accent_green
+        or pct_val >= 25 and theme.accent
+        or theme.accent_red
     local pct_label = widgets.Label({
         x = 0, y = 0,
         text = pct_fmt,
@@ -343,7 +346,7 @@ local function render_top_level(panel, cx, cy, cw)
                 fill_color = theme.bar.fill_mid
             else
                 fill_color = theme.bar.fill_low
-                pct_color = theme.accent_amber
+                pct_color = theme.accent_red
             end
         end
 
@@ -450,7 +453,10 @@ local function render_item_list(panel, cx, cy, cw, params)
     local pct_val = pct(s.completed, s.total)
     local pct_fmt = string.format('%d%%', pct_val)
     local pct_width = #pct_fmt * theme.header_pct_char_width
-    local pct_color = pct_val >= 100 and theme.accent_gold or theme.accent
+    local pct_color = pct_val >= 100 and theme.accent_gold
+        or pct_val >= 75 and theme.accent_green
+        or pct_val >= 25 and theme.accent
+        or theme.accent_red
     local pct_label = widgets.Label({
         x = 0, y = 0,
         text = pct_fmt,

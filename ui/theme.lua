@@ -184,6 +184,13 @@ theme.accent_dim = {                                        -- #28c0e4
     blue = 228,
 }
 
+theme.accent_red = {                                        -- #dc3c3c
+    alpha = 255,
+    red = 220,
+    green = 60,
+    blue = 60,
+}
+
 theme.accent_amber = {                                      -- #ffb702
     alpha = 255,
     red = 255,
@@ -230,7 +237,7 @@ theme.card = {
 -- Bar colors (by completion tier)
 theme.bar = {
     bg = {alpha = 200, red = 21, green = 37, blue = 67},              -- dark track
-    fill_low = {alpha = 230, red = 255, green = 183, blue = 2},       -- amber (<25%)
+    fill_low = {alpha = 230, red = 220, green = 60, blue = 60},        -- red (<25%)
     fill_mid = {alpha = 230, red = 64, green = 206, blue = 243},      -- cyan (25-74%)
     fill_high = {alpha = 230, red = 80, green = 220, blue = 120},     -- green (75-99%)
     fill_complete = {alpha = 240, red = 255, green = 215, blue = 0},  -- gold (100%)
