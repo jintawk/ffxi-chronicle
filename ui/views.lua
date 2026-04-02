@@ -508,14 +508,16 @@ local function render_item_list(panel, cx, cy, cw, params)
 
     cy = cy + theme.s(20)
 
-    -- Progress bar (amber fill, matching design)
-    local fill_color = theme.bar.fill_low  -- amber default
+    -- Progress bar (tiered fill colour matching card/header design)
+    local fill_color = theme.bar.fill_low
     if s.total > 0 then
         local p = pct(s.completed, s.total)
         if p >= 100 then
             fill_color = theme.bar.fill_complete
         elseif p >= 75 then
             fill_color = theme.bar.fill_high
+        elseif p >= 25 then
+            fill_color = theme.bar.fill_mid
         end
     end
 
