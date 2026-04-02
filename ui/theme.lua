@@ -54,7 +54,7 @@ local function apply_scale()
     theme.title_size = s(11)
 
     -- Card font sizes
-    theme.card_name_size = s(11)
+    theme.card_name_size = s(9)
     theme.card_sub_size = s(8)
     theme.card_pct_size = s(9)
 

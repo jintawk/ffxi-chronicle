@@ -438,6 +438,22 @@ local area_names = {
     tvr         = 'Voracious Resurgence',
 }
 
+-- Mission-specific display name overrides (where mission pack name differs from quest category)
+local mission_area_names = {
+    sandoria    = 'San d\'Oria',
+    bastok      = 'Bastok',
+    windurst    = 'Windurst',
+    zilart      = 'Rise of the Zilart',
+    cop         = 'Chains of Promathia',
+    toau        = 'Treasures of Aht Urhgan',
+    wotg        = 'Wings of the Goddess',
+    adoulin     = 'Seekers of Adoulin',
+    rov         = 'Rhapsodies of Vana\'diel',
+    tvr         = 'The Voracious Resurgence',
+    assault     = 'Assaults',
+    campaign    = 'Campaign Operations',
+}
+
 -- Ordered lists for display
 local quest_areas = {'sandoria', 'bastok', 'windurst', 'jeuno', 'other', 'outlands', 'toau', 'wotg', 'abyssea', 'adoulin', 'coalition'}
 local mission_areas = {'sandoria', 'bastok', 'windurst', 'zilart', 'cop', 'toau', 'wotg', 'acp', 'mkd', 'asa', 'adoulin', 'rov', 'tvr', 'assault', 'campaign'}
@@ -904,7 +920,7 @@ function data.get_type_summary(cat)
         total_count = total_count + status.total
         table.insert(area_summaries, {
             area = area,
-            name = area_names[area] or area,
+            name = (cat == 'mission' and mission_area_names[area]) or area_names[area] or area,
             completed = status.completed,
             total = status.total,
             has_data = status.has_data,
@@ -972,7 +988,7 @@ function data.print_area(cat, area)
         return
     end
 
-    local display_name = area_names[area] or area
+    local display_name = (cat == 'mission' and mission_area_names[area]) or area_names[area] or area
     local label = cat == 'mission' and 'Missions' or 'Quests'
     windower.add_to_chat(207, string.format('---------- %s %s ----------', display_name, label))
     windower.add_to_chat(207, string.format('  %d / %d  (%d%%)', s.completed, s.total, pct(s.completed, s.total)))
@@ -1047,8 +1063,8 @@ function data.is_loaded()
     return state.loaded
 end
 
-function data.get_area_name(area)
-    return area_names[area] or area
+function data.get_area_name(area, cat)
+    return (cat == 'mission' and mission_area_names[area]) or area_names[area] or area
 end
 
 local function ci_lookup(tbl, norm_tbl, key)

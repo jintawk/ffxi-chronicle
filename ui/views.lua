@@ -145,7 +145,7 @@ local function build_breadcrumb(panel, cx, cy)
         if entry.view_type == 'item_list' then
             local cat = entry.params.cat
             local area = entry.params.area
-            local area_name = data.get_area_name(area)
+            local area_name = data.get_area_name(area, cat)
 
             if is_last then
                 table.insert(crumbs, {text = area_name})
@@ -408,7 +408,7 @@ end
 local function render_item_list(panel, cx, cy, cw, params)
     local cat = params.cat
     local area = params.area
-    local area_name = data.get_area_name(area)
+    local area_name = data.get_area_name(area, cat)
     local s = data.get_area_status(cat, area)
 
     if not data.is_loaded() then
