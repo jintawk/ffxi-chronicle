@@ -139,6 +139,29 @@ Chronicle tracks 15 mission categories:
 - Assault
 - Campaign
 
+## Technical Notes
+
+### Mission Packet Parsing
+
+Chronicle reads mission and quest state from incoming packet `0x056`, which the server sends on zone-in. Each sub-type carries data for a different quest region or mission storyline (see `libs/packets/fields.lua` for definitions).
+
+Most mission lines track completion via bitflag packets (one bit per mission), but several "linear" storylines — COP, SOA, ROV, ACP, MKD, ASA, and TVR — only send a "current mission" integer. Chronicle infers completion from this: every mission before the current one is marked completed.
+
+### TVR (The Voracious Resurgence) High-Bit Flag
+
+TVR mission state arrives in packet `0x056` sub-type `0xFFFE` as a signed 32-bit integer at offset `0x04`. Unlike other linear mission lines, TVR allows the player to have **no active mission** after completing one (you don't automatically start the next). The server encodes this using bit 31 of the integer:
+
+| Bit 31 | Meaning | Lower 31 bits |
+|---|---|---|
+| Clear (positive value) | Player has a mission in progress | Value near the active mission's DAT ID |
+| Set (negative as signed int) | Player has no active mission | Value near the next uncompleted mission's DAT ID |
+
+When bit 31 is set, all missions with DAT IDs below the lower 31-bit value are completed. For example, a raw packet value of `0x800001CC` (lower bits = 460) means missions through "Koru-Moru's Hypothesis" (DAT ID 452) are completed and "Altennia Burns Bright" (DAT ID 460) has not been started.
+
+Note: the packet value does not exactly match DAT mission IDs in either case. Chronicle uses a fuzzy lookup (largest map ID <= packet value) to resolve the correct mission. The remaining 28 bytes in the `0xFFFE` packet (after the integer) are confirmed to be unused zeros.
+
+Other linear mission lines (COP, SOA, ROV, etc.) do not use this flag because their final missions stay permanently "active" once the storyline is complete — the player always has a current mission value > 0.
+
 ## Credits
 
 - Quest data sourced from [BG Wiki](https://www.bg-wiki.com/), licensed under [CC BY-NC-SA 3.0](https://creativecommons.org/licenses/by-nc-sa/3.0/)

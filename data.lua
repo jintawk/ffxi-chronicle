@@ -314,6 +314,10 @@ local mission_overrides = {
     rov = {
         [334] = active_means_completed,
     },
+    -- TVR: "Your Decision" (642) stays active forever = completed.
+    tvr = {
+        [642] = active_means_completed,
+    },
     -- TOAU: "Eternal Mercenary" (47) stays active forever = completed.
     toau = {
         [47] = active_means_completed,
@@ -574,12 +578,58 @@ local function get_mission_area_status(area, area_map)
     local ids = sorted_ids.mission[area]
 
     if linear_mission_areas[area] then
-        -- Linear progression: current value is a single mission ID
-        -- Note: packet values may not correspond directly to DAT IDs (e.g., TVR
-        -- reports 454 for DAT ID 452). Find the active mission as the largest
-        -- map ID that is <= current_val, rather than requiring an exact match.
-        local current_val = state.mission.current[area]
-        has_data = current_val ~= nil
+        -- Linear progression: current value is a single mission ID.
+        --
+        -- Packet values do not correspond directly to DAT mission IDs. The
+        -- server sends a value that falls between consecutive DAT IDs (e.g.,
+        -- TVR sends 454 when the active mission's DAT ID is 452, the next
+        -- mission is 460). We resolve this with a fuzzy lookup: find the
+        -- largest map ID that is <= the packet value.
+        --
+        -- TVR "no active mission" high-bit flag (0x80000000):
+        --
+        --   Packet 0x056 sub-type 0xFFFE carries TVR mission state as a
+        --   signed 32-bit integer at offset 0x04. The high bit encodes
+        --   whether the player currently has an active TVR mission:
+        --
+        --     Bit 31 clear (positive value):
+        --       Player has a mission in progress. The lower 31 bits hold a
+        --       value near the active mission's DAT ID (use <= fuzzy lookup).
+        --       Example: value 454 → active mission is DAT ID 452.
+        --
+        --     Bit 31 set (negative when parsed as signed int):
+        --       Player has NO active mission. The lower 31 bits point to
+        --       the next uncompleted mission's DAT ID (or near it). All
+        --       missions with IDs strictly less than this value are completed.
+        --       Example: value 0x800001CC (lower bits = 460) → missions
+        --       through DAT ID 452 are completed, 460 onward not started.
+        --
+        --   This flag is unique to TVR among current mission lines. Other
+        --   linear areas (COP, SOA, ROV, ACP, MKD, ASA) always have an
+        --   active mission once started (their final mission stays
+        --   permanently active via active_means_completed overrides), so
+        --   the high bit is never set for them. The stripping logic below
+        --   is safe for all areas — it only triggers on negative values.
+        --
+        --   Discovery: 2026-04-02 via raw packet hex inspection with the
+        --   MissionSniffer addon. The 28 bytes after the int in 0xFFFE
+        --   (labeled _junk in fields.lua) are confirmed all-zero and do
+        --   not carry completion bitflags.
+        --
+        local raw_val = state.mission.current[area]
+        has_data = raw_val ~= nil
+
+        local no_active_flag = false
+        local current_val = raw_val
+        if current_val then
+            -- Detect and strip the high-bit flag (signed int: negative means bit set)
+            if current_val < 0 then
+                no_active_flag = true
+                -- Strip high bit: signed int with 0x80000000 set -> lower 31 bits
+                -- In Lua 5.1 signed arithmetic: add 2^31 to convert from negative
+                current_val = current_val + 2147483648
+            end
+        end
 
         -- Find the active mission ID: largest map ID <= current_val
         local active_id = nil
@@ -601,7 +651,7 @@ local function get_mission_area_status(area, area_map)
                 local area_overrides = mission_overrides[area]
                 if area_overrides and area_overrides[id] then
                     local is_completed = active_id and id < active_id or false
-                    local is_current = active_id and id == active_id or false
+                    local is_current = active_id and id == active_id and not no_active_flag or false
                     local status_override, skip = area_overrides[id](id, name, is_completed, is_current, {
                         current_val = current_val,
                         cop_current = state.mission.current['cop'],
@@ -621,7 +671,16 @@ local function get_mission_area_status(area, area_map)
                     total = total + 1
                     local status
                     if active_id then
-                        if id < active_id then
+                        if no_active_flag then
+                            -- High-bit flag: active_id is the next uncompleted mission,
+                            -- not an in-progress one. Everything before it is completed.
+                            if id < active_id then
+                                status = 'completed'
+                                completed_count = completed_count + 1
+                            else
+                                status = 'not_started'
+                            end
+                        elseif id < active_id then
                             status = 'completed'
                             completed_count = completed_count + 1
                         elseif id == active_id then
