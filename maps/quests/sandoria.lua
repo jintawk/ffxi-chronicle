@@ -40,7 +40,7 @@ return {
     [71] = 'Blackmail',
     [72] = 'The Setting Sun',
     [74] = 'Distant Loyalties',
-    [75] = 'The Rivalry',
+    [75] = 'The Rivalry/The Competition',
     [76] = 'The Competition',
     [77] = 'Starting a Flame',
     [78] = 'Fear of the Dark',

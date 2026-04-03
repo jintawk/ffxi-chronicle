@@ -1035,26 +1035,7 @@ return {
         walkthrough = '1. Talk to Fontoumant, who asks you to deliver parcels to various NPCs in Port San d\'Oria.  You can only hold 1 parcel at a time, so deliver it then return to him for another.\n   - Magic Shop Parcel » Regine (J-8)\n   - Auction Parcel » Apstaule (located upstairs) (H-10)\n   - Pub Parcel » Thierride (G-7)\n2. Once all parcels are delivered, talk to him again for your reward.',
         notes = nil,
     },
-    ['The Competition'] = {
-        id = 76,
-        start_npc = 'Joulet or Gallijaux',
-        start_zone = 'Port San d\'Oria',
-        start_pos = 'H-8',
-        description = 'Catch moat carp by any means possible so Gallijaux can win a fishing contest against his little brother, Joulet. -OR- Catch moat carp by any means possible so Joulet can win a fishing contest against his elder brother, Gallijaux.',
-        reward = '10 gil (per carp)\nLu Shang\'s Fishing Rod\n[Key Item] Testimonial',
-        fame = 'San d\'Oria',
-        fame_level = '1',
-        title = 'Carp Diem',
-        repeatable = 'No',
-        previous = nil,
-        next = nil,
-        requirements = {
-            {name = '10,000 Moat Carp and/or Forest Carp', count = 1},
-        },
-        walkthrough = '1. The quest begins from either Joulet (for \'The Competition\') or Gallijaux (for \'The Rivalry\').\n2. Trade whichever NPC you want 10,000 Moat Carp and/or Forest Carp.\n3. Ufanne, Port San d\'Oria (H-8) keeps track of how many fish you have turned in, and to which brother. You may need to speak to her multiple times.\n4. Talking to either brother will tell you how many carp they have been traded by all players since last server maintenance.',
-        notes = nil,
-    },
-    ['The Rivalry'] = {
+    ['The Rivalry/The Competition'] = {
         id = 75,
         start_npc = 'Joulet or Gallijaux',
         start_zone = 'Port San d\'Oria',

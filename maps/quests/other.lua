@@ -20,7 +20,7 @@ return {
     [21] = 'The Gift',
     [22] = 'The Real Gift',
     [23] = 'The Rescue',
-    [24] = 'Elder Memories',
+    [24] = 'Elder Memories/The Old Lady',
     [25] = 'Test My Mettle',
     [26] = 'Inside the Belly',
     [27] = 'Trial by Lightning',

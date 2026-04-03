@@ -69,7 +69,7 @@ return {
     [66] = 'Her Memories: The Faux Pas',
     [67] = 'Her Memories: Grave Resolve',
     [68] = 'Her Memories: Operation Cupid',
-    [69] = 'Her Memories: Carnelian Footfalls',
+    [69] = 'Her Memories: Carnelian/Azure/Verdure',
     [70] = 'Her Memories: Azure Footfalls',
     [71] = 'Her Memories: Verdure Footfalls',
     [72] = 'Her Memories: Of Malign Maladies',

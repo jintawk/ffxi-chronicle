@@ -141,23 +141,40 @@ for cat, cat_maps in pairs(maps) do
     end
 end
 
+-- Forward declaration: to_set is defined later but referenced by override closures.
+local to_set
+
+-- Helper: generates override entries for a group of mutually exclusive quests.
+-- primary_id is shown in the list; all other_ids are skipped.
+-- The primary shows "completed" if any in the group is completed,
+-- "active" if any is active, otherwise "not_started".
+local function mutual_exclusive_group(primary_id, other_ids)
+    local overrides = {}
+    overrides[primary_id] = function(id, name, is_completed, is_current, ctx)
+        local any_completed = is_completed
+        local any_current = is_current
+        for _, oid in ipairs(other_ids) do
+            if ctx.completed_set[oid + 1] then any_completed = true end
+            if ctx.current_set[oid + 1] then any_current = true end
+        end
+        if any_completed then return 'completed', false
+        elseif any_current then return 'active', false
+        else return 'not_started', false
+        end
+    end
+    for _, oid in ipairs(other_ids) do
+        overrides[oid] = function() return nil, true end
+    end
+    return overrides
+end
+
 -- Special-case quest overrides
 -- handler(id, name, is_completed, is_current, ctx) -> status_override, skip
 local quest_overrides = {
     -- The Rivalry (75) / The Competition (76): mutually exclusive.
     -- Only one can be completed per character. Merged into a single entry;
     -- ID 76 is skipped from the list entirely.
-    sandoria = {
-        [75] = function(id, name, is_completed, is_current, ctx)
-            local other_completed = ctx.completed_set[76 + 1] or false
-            local other_current = ctx.current_set[76 + 1] or false
-            if is_completed or other_completed then return 'completed', false
-            elseif is_current or other_current then return 'active', false
-            else return 'not_started', false
-            end
-        end,
-        [76] = function() return nil, true end, -- skip (merged into 75)
-    },
+    sandoria = mutual_exclusive_group(75, {76}),
     -- "Mystery of *" (33-40) and "JNQuest" (122,125-127): DAT placeholders, not real quests.
     jeuno = {
         [33] = function() return nil, true end,
@@ -193,14 +210,36 @@ local quest_overrides = {
     coalition = {
         [47] = function() return nil, true end, -- skip
     },
-    -- Ad Infinitum: never gets completed flag; treat "active" as "completed"
-    wotg = {
-        [98] = function(id, name, is_completed, is_current)
+    -- Elder Memories (24) / The Old Lady (10): mutually exclusive.
+    -- Mog Garden quests (1039-1049): displayed under "Other Areas" but completion
+    -- is tracked in the Adoulin packet. Bit position = quest_id - 1000.
+    other = (function()
+        local overrides = mutual_exclusive_group(24, {10})
+        local mog_garden_ids = {1039, 1040, 1041, 1042, 1043, 1044, 1045, 1047, 1048, 1049}
+        for _, qid in ipairs(mog_garden_ids) do
+            overrides[qid] = function(id)
+                local adoulin_completed = to_set(state.quest.completed['adoulin'])
+                local adoulin_current = to_set(state.quest.current['adoulin'])
+                local bit = id - 1000 + 1
+                if adoulin_completed[bit] then return 'completed', false
+                elseif adoulin_current[bit] then return 'active', false
+                else return 'not_started', false
+                end
+            end
+        end
+        return overrides
+    end)(),
+    -- Her Memories (69/70/71): mutually exclusive (Carnelian/Azure/Verdure Footfalls).
+    -- Ad Infinitum (98): never gets completed flag; treat "active" as "completed".
+    wotg = (function()
+        local overrides = mutual_exclusive_group(69, {70, 71})
+        overrides[98] = function(id, name, is_completed, is_current)
             if is_completed or is_current then return 'completed', false
             else return 'not_started', false
             end
-        end,
-    },
+        end
+        return overrides
+    end)(),
 }
 
 -- Helper for nation "choose a destination" missions:
@@ -478,7 +517,7 @@ local nation_map = {[0] = 'sandoria', [1] = 'bastok', [2] = 'windurst'}
 -- Memoized: same raw_data string/number returns cached result
 local to_set_cache = {}
 
-local function to_set(raw_data)
+to_set = function(raw_data)
     if not raw_data then return {} end
     local cached = to_set_cache[raw_data]
     if cached then return cached end
