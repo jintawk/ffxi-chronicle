@@ -37,7 +37,7 @@ local state = {
 
 -- Sort/filter option tables
 local sort_options = {'Default', 'Name', 'Status', 'Location'}
-local filter_options = {'All', 'Completed', 'Active', 'Uncompleted'}
+local filter_options = {'All', 'Completed', 'Active', 'Uncompleted', 'Uncompletable'}
 
 -- Percentage helper
 local function pct(n, d)
@@ -251,6 +251,11 @@ local function render_top_level(panel, cx, cy, cw)
     local tab_data = s[active_tab] or s.quest
     local cat_label = active_tab == 'mission' and 'MISSIONS' or 'QUESTS'
 
+    -- Adjust totals: exclude uncompletable quests unless setting is on
+    local show_uc = data.get_show_uncompletable()
+    local adj_completed = tab_data.completed
+    local adj_total = show_uc and tab_data.total or tab_data.total - (tab_data.uncompletable or 0)
+
     -- === HEADER ===
 
     -- Subtitle (below tab bar)
@@ -265,7 +270,7 @@ local function render_top_level(panel, cx, cy, cw)
     panel:add_child(subtitle, cx, cy)
 
     -- Percentage (right side, large)
-    local pct_val = pct(tab_data.completed, tab_data.total)
+    local pct_val = pct(adj_completed, adj_total)
     local pct_fmt = string.format('%d%%', pct_val)
     local pct_width = #pct_fmt * theme.header_pct_char_width
     local pct_color = pct_val >= 100 and theme.accent_gold
@@ -296,7 +301,7 @@ local function render_top_level(panel, cx, cy, cw)
     cy = cy + theme.s(16)
 
     -- Count line (right side)
-    local count_str = string.format('%d / %d', tab_data.completed, tab_data.total)
+    local count_str = string.format('%d / %d', adj_completed, adj_total)
     local count_width = #count_str * theme.header_count_char_width
     local count_label = widgets.Label({
         x = 0, y = 0,
@@ -318,7 +323,7 @@ local function render_top_level(panel, cx, cy, cw)
         fill_color = theme.bar_total.fill,
     })
     panel:add_child(header_bar, cx, cy)
-    header_bar:update(tab_data.completed, tab_data.total, '')
+    header_bar:update(adj_completed, adj_total, '')
 
     cy = cy + theme.header_bar_height + theme.s(14)
 
@@ -332,10 +337,11 @@ local function render_top_level(panel, cx, cy, cw)
         local card_x = cx + col * (col_width + theme.card_gap)
         local card_y = cy + row * (theme.card_height + theme.card_gap)
 
-        local area_pct = pct(area_info.completed, area_info.total)
+        local area_total = show_uc and area_info.total or area_info.total - (area_info.uncompletable or 0)
+        local area_pct = pct(area_info.completed, area_total)
         local fill_color = theme.bar.fill_default
         local pct_color = theme.accent
-        if area_info.total > 0 then
+        if area_total > 0 then
             if area_pct >= 100 then
                 fill_color = theme.bar.fill_complete
                 pct_color = theme.accent_gold
@@ -350,7 +356,7 @@ local function render_top_level(panel, cx, cy, cw)
             end
         end
 
-        local sub_text = string.format('%d / %d', area_info.completed, area_info.total)
+        local sub_text = string.format('%d / %d', area_info.completed, area_total)
         if not area_info.has_data then
             sub_text = sub_text .. ' [NO DATA]'
         end
@@ -366,7 +372,7 @@ local function render_top_level(panel, cx, cy, cw)
             complete_star = area_pct >= 100 and complete_icon_path or nil,
             pct_color = pct_color,
             completed = area_info.completed,
-            total = area_info.total,
+            total = area_total,
             fill_color = fill_color,
             emblem = find_emblem(area_key),
             on_click = function()
@@ -449,8 +455,12 @@ local function render_item_list(panel, cx, cy, cw, params)
     })
     panel:add_child(area_title, cx, cy)
 
+    -- Adjust totals for uncompletable
+    local show_uc = data.get_show_uncompletable()
+    local s_total = show_uc and s.total or s.total - (s.uncompletable or 0)
+
     -- Percentage (right side, large — matches root-level layout)
-    local pct_val = pct(s.completed, s.total)
+    local pct_val = pct(s.completed, s_total)
     local pct_fmt = string.format('%d%%', pct_val)
     local pct_width = #pct_fmt * theme.header_pct_char_width
     local pct_color = pct_val >= 100 and theme.accent_gold
@@ -494,7 +504,7 @@ local function render_item_list(panel, cx, cy, cw, params)
         panel:add_child(subtitle, cx, cy)
     end
 
-    local count_str = string.format('%d / %d', s.completed, s.total)
+    local count_str = string.format('%d / %d', s.completed, s_total)
     local count_width = #count_str * theme.header_count_char_width
     local count_label = widgets.Label({
         x = 0, y = 0,
@@ -510,8 +520,8 @@ local function render_item_list(panel, cx, cy, cw, params)
 
     -- Progress bar (tiered fill colour matching card/header design)
     local fill_color = theme.bar.fill_low
-    if s.total > 0 then
-        local p = pct(s.completed, s.total)
+    if s_total > 0 then
+        local p = pct(s.completed, s_total)
         if p >= 100 then
             fill_color = theme.bar.fill_complete
         elseif p >= 75 then
@@ -528,7 +538,7 @@ local function render_item_list(panel, cx, cy, cw, params)
         fill_color = fill_color,
     })
     panel:add_child(progress_bar, cx, cy)
-    progress_bar:update(s.completed, s.total, '')
+    progress_bar:update(s.completed, s_total, '')
 
     cy = cy + theme.header_bar_height + theme.toolbar_y_gap
 
@@ -565,9 +575,16 @@ local function render_item_list(panel, cx, cy, cw, params)
     end
 
     -- Filter button (right side)
+    -- Only show "Uncompletable" filter option when the setting is on
+    local active_filter_options = show_uc and filter_options or {'All', 'Completed', 'Active', 'Uncompleted'}
+    -- Clamp filter index if setting was turned off while on Uncompletable filter
+    if filter_idx > #active_filter_options then
+        filter_idx = 1
+        params.filter_idx = 1
+    end
     local filter_btn = widgets.ToolbarButton({
         label = 'Show',
-        options = filter_options,
+        options = active_filter_options,
         index = filter_idx,
         on_change = function(idx, val)
             params.filter_idx = idx
@@ -579,9 +596,9 @@ local function render_item_list(panel, cx, cy, cw, params)
         end,
     })
     -- Estimated char width at toolbar_button_size for positioning
-    -- "Show: Uncompleted" = 18 chars (longest filter), "Sort: Location" = 15 chars (longest sort)
+    -- "Show: Uncompletable" = 20 chars (longest filter), "Sort: Location" = 15 chars (longest sort)
     local char_w = theme.toolbar_button_size * 0.75
-    local filter_w = math.floor(19 * char_w + 8)
+    local filter_w = math.floor(21 * char_w + 8)
     local sort_w = math.floor(16 * char_w + 8)
     panel:add_child(filter_btn, cx + cw - filter_w, cy)
 
@@ -627,6 +644,17 @@ local function render_item_list(panel, cx, cy, cw, params)
         end
     end
 
+    -- Hide uncompletable items when setting is off
+    if not show_uc then
+        local filtered = {}
+        for _, item in ipairs(items) do
+            if item.status ~= 'uncompletable' then
+                filtered[#filtered + 1] = item
+            end
+        end
+        items = filtered
+    end
+
     -- Apply filter
     if filter_idx == 2 then -- Completed (includes repeat)
         local filtered = {}
@@ -644,10 +672,18 @@ local function render_item_list(panel, cx, cy, cw, params)
             end
         end
         items = filtered
-    elseif filter_idx == 4 then -- Uncompleted (active + not_started)
+    elseif filter_idx == 4 then -- Uncompleted (active + not_started, excludes uncompletable)
         local filtered = {}
         for _, item in ipairs(items) do
-            if item.status ~= 'completed' and item.status ~= 'repeat' then
+            if item.status ~= 'completed' and item.status ~= 'repeat' and item.status ~= 'uncompletable' then
+                filtered[#filtered + 1] = item
+            end
+        end
+        items = filtered
+    elseif filter_idx == 5 then -- Uncompletable only
+        local filtered = {}
+        for _, item in ipairs(items) do
+            if item.status == 'uncompletable' then
                 filtered[#filtered + 1] = item
             end
         end
@@ -670,7 +706,7 @@ local function render_item_list(panel, cx, cy, cw, params)
     if sort_idx == 2 then -- Name
         table.sort(items, function(a, b) return a.name:lower() < b.name:lower() end)
     elseif sort_idx == 3 then -- Status
-        local priority = {active = 1, not_started = 2, completed = 3, ['repeat'] = 4}
+        local priority = {active = 1, not_started = 2, uncompletable = 3, completed = 4, ['repeat'] = 5}
         table.sort(items, function(a, b)
             local pa, pb = priority[a.status] or 9, priority[b.status] or 9
             if pa ~= pb then return pa < pb end
@@ -742,6 +778,7 @@ local status_display = {
     active = 'ACTIVE',
     ['repeat'] = 'REPEATABLE',
     not_started = 'NOT STARTED',
+    uncompletable = 'UNCOMPLETABLE',
 }
 
 local function render_guide(panel, cx, cy, cw, params)
@@ -827,6 +864,26 @@ local function render_guide(panel, cx, cy, cw, params)
     panel:add_child(badge_label, cx + cw - badge_w - theme.s(4), cy + theme.s(3))
 
     cy = cy + theme.guide_name_size + theme.s(12)
+
+    -- =================================================================
+    -- UNCOMPLETABLE NOTICE
+    -- =================================================================
+    if status_name == 'uncompletable' then
+        local uc_color = theme.status.uncompletable
+        local notice = widgets.Label({
+            x = 0, y = 0,
+            text = 'This quest cannot currently be completed.',
+            size = theme.s(9),
+            color = uc_color,
+            bg_alpha = 40,
+            bg_red = uc_color.red,
+            bg_green = uc_color.green,
+            bg_blue = uc_color.blue,
+            padding = 4,
+        })
+        panel:add_child(notice, cx, cy)
+        cy = cy + theme.s(28)
+    end
 
     -- =================================================================
     -- DESCRIPTION (flavor text)

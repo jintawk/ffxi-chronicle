@@ -218,6 +218,7 @@ theme.status = {
     active = {red = 255, green = 183, blue = 2, alpha = 255},          -- amber
     ['repeat'] = {red = 64, green = 206, blue = 243, alpha = 200},     -- cyan dimmed
     not_started = {red = 160, green = 171, blue = 198, alpha = 255},   -- dim text
+    uncompletable = {red = 255, green = 170, blue = 50, alpha = 200},  -- muted amber/orange
     unknown = {red = 255, green = 113, blue = 108, alpha = 255},       -- error red #ff716c
     -- Requirements checklist
     req_has = {red = 64, green = 206, blue = 243, alpha = 255},        -- cyan
@@ -267,6 +268,7 @@ theme.status_labels = {
     active = 'ACTIVE',
     not_started = '',
     ['repeat'] = 'REPEATABLE',
+    uncompletable = 'UNCOMPLETABLE',
 }
 
 -- Clickable bar indicator

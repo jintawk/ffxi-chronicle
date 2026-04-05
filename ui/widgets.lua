@@ -21,11 +21,12 @@ local widgets = {}
 -- Icon asset paths
 local ASSETS = windower.addon_path .. 'assets/'
 local STATUS_ICON = {
-    completed   = ASSETS .. 'completed.png',
-    active      = ASSETS .. 'pending.png',
-    not_started = ASSETS .. 'not_started.png',
-    ['repeat']  = ASSETS .. 'repeat.png',
-    unknown     = ASSETS .. 'unknown.png',
+    completed     = ASSETS .. 'completed.png',
+    active        = ASSETS .. 'pending.png',
+    not_started   = ASSETS .. 'not_started.png',
+    ['repeat']    = ASSETS .. 'repeat.png',
+    uncompletable = ASSETS .. 'unknown.png',
+    unknown       = ASSETS .. 'unknown.png',
 }
 local REQ_ICON = {
     req_has     = ASSETS .. 'completed.png',
@@ -1083,9 +1084,9 @@ function QuestRowList:_refresh()
                 row.indicator:alpha(0)
             end
 
-            -- Quest name — dimmer for completed
+            -- Quest name — dimmer for completed/uncompletable
             row.name:text(item.name or '')
-            if item.status == 'completed' then
+            if item.status == 'completed' or item.status == 'uncompletable' then
                 row.name:color(theme.text_dim.red, theme.text_dim.green, theme.text_dim.blue)
             else
                 row.name:color(theme.text.red, theme.text.green, theme.text.blue)

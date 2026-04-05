@@ -27,7 +27,7 @@
 _addon.name = 'chronicle'
 _addon.author = 'Jintawk'
 _addon.commands = {'chronicle', 'cr'}
-_addon.version = '1.1.4'
+_addon.version = '1.2.0'
 
 local config = require('config')
 local packets = require('packets')
@@ -46,14 +46,18 @@ local defaults = {
     collapsed_on_load = false,
     scale = 1.0,
     sort_mode = 1,    -- 1=Default, 2=Name, 3=Status
-    filter_mode = 1,  -- 1=All, 2=Done, 3=Todo
+    filter_mode = 1,  -- 1=All, 2=Done, 3=Todo, 4=Uncompleted, 5=Uncompletable
     active_tab = 'mission',  -- 'mission' or 'quest' (default tab on home view)
+    show_uncompletable = false,  -- show quests that can no longer be completed
 }
 
 local settings = config.load(defaults)
 
 -- Apply saved scale to theme
 theme.set_scale(settings.scale)
+
+-- Apply saved uncompletable setting to data layer
+data.set_show_uncompletable(settings.show_uncompletable)
 
 ---------------------------------------------------------------------------
 -- UI state
@@ -237,6 +241,7 @@ windower.register_event('login', function(name)
     data.on_login(name)
     config.reload(settings)
     theme.set_scale(settings.scale)
+    data.set_show_uncompletable(settings.show_uncompletable)
 end)
 
 windower.register_event('logout', function(name)
@@ -326,6 +331,12 @@ windower.register_event('addon command', function(...)
                 ui.panel:show()
             end
         end
+    elseif cmd == 'uncompletable' then
+        settings.show_uncompletable = not settings.show_uncompletable
+        data.set_show_uncompletable(settings.show_uncompletable)
+        settings:save()
+        windower.add_to_chat(207, 'Chronicle: Show uncompletable quests: ' .. (settings.show_uncompletable and 'ON' or 'OFF'))
+        refresh_ui()
     elseif cmd == 'debug' then
         data.toggle_debug()
     elseif cmd == 'unknown' then
@@ -343,6 +354,7 @@ windower.register_event('addon command', function(...)
         windower.add_to_chat(207, '  //cr size +/-         - Increase/decrease UI scale by 0.1')
         windower.add_to_chat(207, '  //cr size <number>    - Set UI scale (0.5 - 3.0)')
         windower.add_to_chat(207, '  //cr size reset       - Reset UI scale to 1.0')
+        windower.add_to_chat(207, '  //cr uncompletable    - Toggle uncompletable quests visibility')
         windower.add_to_chat(207, '  //cr unknown      - List unknown quest/mission IDs')
         windower.add_to_chat(207, '  //cr q [area]     - Show quest summary / area detail (chat)')
         windower.add_to_chat(207, '  //cr m [area]     - Show mission summary / area detail (chat)')

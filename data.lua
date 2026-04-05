@@ -168,6 +168,31 @@ local function mutual_exclusive_group(primary_id, other_ids)
     return overrides
 end
 
+-- Helper: "permanently active" final missions/quests that signify storyline completion
+local function active_means_completed(id, name, is_completed, is_current)
+    if is_completed or is_current then return 'completed', false end
+    return 'not_started', false
+end
+
+-- Setting: whether to show uncompletable quests (controlled by chronicle.lua)
+local show_uncompletable = false
+
+function data.set_show_uncompletable(val)
+    show_uncompletable = val
+end
+
+function data.get_show_uncompletable()
+    return show_uncompletable
+end
+
+-- Helper: quests that exist in-game data but can no longer be completed.
+-- If the player completed it before it became uncompletable, show as completed.
+-- Otherwise, show as 'uncompletable' (visible) or skip (hidden) based on setting.
+local function uncompletable_override(id, name, is_completed, is_current)
+    if is_completed then return 'completed', false end
+    return 'uncompletable', false
+end
+
 -- Special-case quest overrides
 -- handler(id, name, is_completed, is_current, ctx) -> status_override, skip
 local quest_overrides = {
@@ -175,16 +200,17 @@ local quest_overrides = {
     -- Only one can be completed per character. Merged into a single entry;
     -- ID 76 is skipped from the list entirely.
     sandoria = mutual_exclusive_group(75, {76}),
-    -- "Mystery of *" (33-40) and "JNQuest" (122,125-127): DAT placeholders, not real quests.
+    -- "Mystery of *" (33-40): real quests that can no longer be completed.
+    -- "JNQuest" (122,125-127): DAT placeholders, not real quests.
     jeuno = {
-        [33] = function() return nil, true end,
-        [34] = function() return nil, true end,
-        [35] = function() return nil, true end,
-        [36] = function() return nil, true end,
-        [37] = function() return nil, true end,
-        [38] = function() return nil, true end,
-        [39] = function() return nil, true end,
-        [40] = function() return nil, true end,
+        [33] = uncompletable_override,  -- Mystery of Fire
+        [34] = uncompletable_override,  -- Mystery of Water
+        [35] = uncompletable_override,  -- Mystery of Earth
+        [36] = uncompletable_override,  -- Mystery of Wind
+        [37] = uncompletable_override,  -- Mystery of Ice
+        [38] = uncompletable_override,  -- Mystery of Lightning
+        [39] = uncompletable_override,  -- Mystery of Light
+        [40] = uncompletable_override,  -- Mystery of Darkness
         [122] = function() return nil, true end,
         [125] = function() return nil, true end,
         [126] = function() return nil, true end,
@@ -204,10 +230,16 @@ local quest_overrides = {
     -- The Sahagin's Key (128): not a real quest; it's an item obtainment sequence
     -- that exists in the DAT but is not trackable in-game.
     outlands = {
-        [128] = function() return nil, true end, -- skip
+        [128] = uncompletable_override,  -- The Sahagin's Key
     },
+    -- "Provide:" quests (16-20): time-limited to Adoulin launch, can no longer be accepted.
     -- Gather: (47): placeholder quest in the rogue coalition, not completable in-game.
     coalition = {
+        [16] = uncompletable_override,  -- Provide: Foret de Hennetiel
+        [17] = uncompletable_override,  -- Provide: Morimar Basalt Fields
+        [18] = uncompletable_override,  -- Provide: Yorcia Weald
+        [19] = uncompletable_override,  -- Provide: Marjami Ravine
+        [20] = uncompletable_override,  -- Provide: Kamihr Drifts
         [47] = function() return nil, true end, -- skip
     },
     -- Elder Memories (24) / The Old Lady (10): mutually exclusive.
@@ -231,6 +263,7 @@ local quest_overrides = {
     end)(),
     -- Her Memories (69/70/71): mutually exclusive (Carnelian/Azure/Verdure Footfalls).
     -- Ad Infinitum (98): never gets completed flag; treat "active" as "completed".
+    -- The Swarm (31): never appears in completed quest log; title-only reward.
     wotg = (function()
         local overrides = mutual_exclusive_group(69, {70, 71})
         overrides[98] = function(id, name, is_completed, is_current)
@@ -238,8 +271,13 @@ local quest_overrides = {
             else return 'not_started', false
             end
         end
+        overrides[31] = uncompletable_override
         return overrides
     end)(),
+    -- A Moonlight Requite (186): final Abyssea quest, stays active forever.
+    abyssea = {
+        [186] = active_means_completed,
+    },
 }
 
 -- Helper for nation "choose a destination" missions:
@@ -255,12 +293,6 @@ local function nation_main_override(id, name, is_completed, is_current, ctx)
     end
 end
 local function skip_override() return nil, true end
-
--- Helper: "permanently active" final missions that signify storyline completion
-local function active_means_completed(id, name, is_completed, is_current)
-    if is_completed or is_current then return 'completed', false end
-    return 'not_started', false
-end
 
 -- Special-case mission overrides
 -- handler(id, name, is_completed, is_current, ctx) -> status_override, skip
@@ -625,6 +657,7 @@ end
 local function get_mission_area_status(area, area_map)
     local completed_count = 0
     local current_count = 0
+    local uncompletable_count = 0
     local total = 0
     local items = {}
     local has_data = false
@@ -717,6 +750,7 @@ local function get_mission_area_status(area, area_map)
                         total = total + 1
                         if status_override == 'completed' then completed_count = completed_count + 1 end
                         if status_override == 'active' then current_count = current_count + 1 end
+                        if status_override == 'uncompletable' then uncompletable_count = uncompletable_count + 1 end
                         table.insert(items, {id = id, name = name, status = status_override})
                         handled = true
                     end
@@ -834,6 +868,7 @@ local function get_mission_area_status(area, area_map)
                         total = total + 1
                         if status_override == 'completed' then completed_count = completed_count + 1 end
                         if status_override == 'active' then current_count = current_count + 1 end
+                        if status_override == 'uncompletable' then uncompletable_count = uncompletable_count + 1 end
                         table.insert(items, {id = id, name = name, status = status_override})
                         handled = true
                     end
@@ -860,6 +895,7 @@ local function get_mission_area_status(area, area_map)
     return {
         completed = completed_count,
         current = current_count,
+        uncompletable = uncompletable_count,
         total = total,
         items = items,
         has_data = has_data,
@@ -867,7 +903,7 @@ local function get_mission_area_status(area, area_map)
 end
 
 -- Get completion counts for a specific area
--- Returns: {completed=N, current=N, total=N, items={[id]={name, status}}}
+-- Returns: {completed=N, current=N, uncompletable=N, total=N, items={[id]={name, status}}}
 function data.get_area_status(cat, area)
     local area_map = maps[cat] and maps[cat][area]
     if not area_map then
@@ -885,6 +921,7 @@ function data.get_area_status(cat, area)
 
     local completed_count = 0
     local current_count = 0
+    local uncompletable_count = 0
     local total = 0
     local items = {}
 
@@ -910,6 +947,7 @@ function data.get_area_status(cat, area)
                     total = total + 1
                     if status_override == 'completed' then completed_count = completed_count + 1 end
                     if status_override == 'active' then current_count = current_count + 1 end
+                    if status_override == 'uncompletable' then uncompletable_count = uncompletable_count + 1 end
                     table.insert(items, {id = id, name = name, status = status_override})
                     handled = true
                 end
@@ -940,6 +978,7 @@ function data.get_area_status(cat, area)
     return {
         completed = completed_count,
         current = current_count,
+        uncompletable = uncompletable_count,
         total = total,
         items = items,
         has_data = has_data,
@@ -951,17 +990,20 @@ function data.get_type_summary(cat)
     local areas = cat == 'mission' and mission_areas or quest_areas
     local total_completed = 0
     local total_count = 0
+    local total_uncompletable = 0
     local area_summaries = {}
 
     for _, area in ipairs(areas) do
         local status = data.get_area_status(cat, area)
         total_completed = total_completed + status.completed
         total_count = total_count + status.total
+        total_uncompletable = total_uncompletable + (status.uncompletable or 0)
         table.insert(area_summaries, {
             area = area,
             name = (cat == 'mission' and mission_area_names[area]) or area_names[area] or area,
             completed = status.completed,
             total = status.total,
+            uncompletable = status.uncompletable or 0,
             has_data = status.has_data,
         })
     end
@@ -969,6 +1011,7 @@ function data.get_type_summary(cat)
     return {
         completed = total_completed,
         total = total_count,
+        uncompletable = total_uncompletable,
         areas = area_summaries,
     }
 end
@@ -982,6 +1025,7 @@ function data.get_summary()
         mission = missions,
         total_completed = quests.completed + missions.completed,
         total = quests.total + missions.total,
+        total_uncompletable = (quests.uncompletable or 0) + (missions.uncompletable or 0),
         loaded = state.loaded,
     }
 end
@@ -1003,14 +1047,16 @@ function data.print_type_summary(cat)
 
     local s = data.get_type_summary(cat)
     local label = cat == 'mission' and 'Missions' or 'Quests'
+    local disp_total = show_uncompletable and s.total or s.total - (s.uncompletable or 0)
     windower.add_to_chat(207, string.format('---------- %s Summary ----------', label))
-    windower.add_to_chat(207, string.format('  Total: %d / %d  (%d%%)', s.completed, s.total, pct(s.completed, s.total)))
+    windower.add_to_chat(207, string.format('  Total: %d / %d  (%d%%)', s.completed, disp_total, pct(s.completed, disp_total)))
     windower.add_to_chat(207, ' ')
 
     for _, a in ipairs(s.areas) do
+        local a_total = show_uncompletable and a.total or a.total - (a.uncompletable or 0)
         local data_marker = a.has_data and '' or ' [no data]'
         windower.add_to_chat(207, string.format('  %-25s %3d / %3d  (%2d%%)%s',
-            a.name, a.completed, a.total, pct(a.completed, a.total), data_marker))
+            a.name, a.completed, a_total, pct(a.completed, a_total), data_marker))
     end
     windower.add_to_chat(207, string.rep('-', 42))
 end
@@ -1029,22 +1075,25 @@ function data.print_area(cat, area)
 
     local display_name = (cat == 'mission' and mission_area_names[area]) or area_names[area] or area
     local label = cat == 'mission' and 'Missions' or 'Quests'
+    local disp_total = show_uncompletable and s.total or s.total - (s.uncompletable or 0)
     windower.add_to_chat(207, string.format('---------- %s %s ----------', display_name, label))
-    windower.add_to_chat(207, string.format('  %d / %d  (%d%%)', s.completed, s.total, pct(s.completed, s.total)))
+    windower.add_to_chat(207, string.format('  %d / %d  (%d%%)', s.completed, disp_total, pct(s.completed, disp_total)))
     windower.add_to_chat(207, ' ')
 
     -- Status colors: completed=green(158), active=blue(207), repeat=yellow(159), not_started=grey(207)
     local status_colors = {
-        completed   = 158,
-        active      = 207,
-        ['repeat']  = 159,
-        not_started = 207,
+        completed      = 158,
+        active         = 207,
+        ['repeat']     = 159,
+        not_started    = 207,
+        uncompletable  = 167,
     }
     local status_symbols = {
-        completed   = '\xe2\x97\x8f',  -- filled circle
-        active      = '\xe2\x97\x8e',  -- circle with dot
-        ['repeat']  = '\xe2\x97\x90',  -- half circle
-        not_started = '\xe2\x97\x8b',  -- empty circle
+        completed      = '\xe2\x97\x8f',  -- filled circle
+        active         = '\xe2\x97\x8e',  -- circle with dot
+        ['repeat']     = '\xe2\x97\x90',  -- half circle
+        not_started    = '\xe2\x97\x8b',  -- empty circle
+        uncompletable  = '\xe2\x9a\xa0',  -- warning sign
     }
 
     if not s.has_data then
@@ -1052,10 +1101,14 @@ function data.print_area(cat, area)
     end
 
     for _, item in ipairs(s.items) do
-        local color = status_colors[item.status] or 207
-        local sym = status_symbols[item.status] or '?'
-        local tag = item.status == 'repeat' and '  [RPT]' or ''
-        windower.add_to_chat(color, string.format('  %s %s%s', sym, item.name, tag))
+        if item.status ~= 'uncompletable' or show_uncompletable then
+            local color = status_colors[item.status] or 207
+            local sym = status_symbols[item.status] or '?'
+            local tag = item.status == 'repeat' and '  [RPT]'
+                or item.status == 'uncompletable' and '  [N/A]'
+                or ''
+            windower.add_to_chat(color, string.format('  %s %s%s', sym, item.name, tag))
+        end
     end
 
     windower.add_to_chat(207, string.rep('-', 42))
