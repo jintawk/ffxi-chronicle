@@ -85,6 +85,7 @@ The guide view shows everything you need to complete a quest or mission:
 | `//cr size <number>` | Set scale directly (0.5 to 3.0) |
 | `//cr size reset` | Reset scale to 1.0 |
 | `//cr autoshow` | Toggle auto-show on login |
+| `//cr uncompletable` | Toggle visibility of quests that can no longer be completed |
 | `//cr q` | Print quest summary to chat |
 | `//cr q <area>` | Print quest detail for an area to chat |
 | `//cr m` | Print mission summary to chat |
@@ -100,6 +101,7 @@ Settings are saved per-character and persist between sessions. The following are
 - **Sort and filter modes** — last-used sort order and show filter
 - **Active tab** — whether the home view defaults to Missions or Quests
 - **Visibility and collapse state** — whether the window is shown and/or collapsed on load
+- **Show uncompletable** — whether quests that can no longer be completed are visible and counted
 
 Settings are stored in `addons/chronicle/data/settings.xml`.
 
