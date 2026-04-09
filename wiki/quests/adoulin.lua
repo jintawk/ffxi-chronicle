@@ -1316,7 +1316,7 @@ return {
         fame_level = nil,
         title = nil,
         repeatable = 'No',
-        previous = {'Velkkovert_Operations'},
+        previous = {'Velkkovert Operations'},
         next = {'The Weatherspoon Inquisition'},
         requirements = nil,
         walkthrough = '1. Speak to Zaffeld in Eastern Adoulin (J-8).\n2. Head to (I-6) / (J-6) border in Yorcia Weald and check the Occultist Footprints (North of the Frontier Station) for a cutscene.\n3. Proceed to (G-10) in Marjami Ravine and check the Hostage Tent for a short cutscene.\n   - Warp to Bivouac #2 and head south east over the river.\n   - When you come to a small watch tower, enter the tunnel there at J-9/10.\n   - Climb up the vine when you reach the tent/reive (there\'s a small cave to your left, SE corner of I-10) and then head north west through to a tunnel that leads under the waterfall.\n   - Follow the tunnel and the Hostage Tent will be ahead of you shortly.\n4. Buff up and check it again to spawn a Velkk Sentinel.\n5. Defeat the Velkk Sentinel and check the Hostage Tent again for another cutscene.\n6. Head to (I-10) (back from where you just came) and check the Seat of Gramk-Droog for another cutscene and your reward.',
