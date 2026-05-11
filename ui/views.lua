@@ -1099,9 +1099,14 @@ local function render_guide(panel, cx, cy, cw, params)
                     panel:add_child(req_icon, cx + theme.s(4), cy + theme.s(3))
                 end
 
+                -- Prefix each non-empty line so multi-line names render aligned
+                -- (subsequent lines get '  - ' too, matching the first line).
+                local line_prefix = icon_path and '' or '  - '
+                local display_text = label:gsub('([^\n]+)', line_prefix .. '%1')
+
                 local req_label = widgets.Label({
                     x = 0, y = 0,
-                    text = (icon_path and '' or '  - ') .. label,
+                    text = display_text,
                     size = theme.font_size,
                     color = color,
                 })
@@ -1109,7 +1114,12 @@ local function render_guide(panel, cx, cy, cw, params)
 
                 -- Right-side status icon removed — left icon is sufficient
 
-                cy = cy + theme.s(16)
+                -- Multi-line names (OR-alternative lists, key-item lists) need
+                -- their actual visual height reserved, otherwise the next
+                -- section overlaps them.
+                local line_count = 1
+                for _ in label:gmatch('\n') do line_count = line_count + 1 end
+                cy = cy + theme.s(16) * line_count
             end
         end
         cy = cy + theme.s(4)
