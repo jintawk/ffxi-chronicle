@@ -60,7 +60,7 @@ return {
         previous = nil,
         next = nil,
         requirements = nil,
-        walkthrough = '1. Talk to Quelveuiat. (I-10, Middle Floor)\n2. Zone into Lufaise Meadows by taking the south exit at (I-6).\n3. Head to (H-10) afterwards.\n   - Clear any nearby Orcs as they will link.\n4. Click the ??? at the top of the platform to spawn Splinterspine Grukjuk, a Ranger Orc NM.\n   - Defeat Splinterspine Grukjuk.\n5. Return to Tavnazian Safehold and speak with Quelveuiat to complete the quest.',
+        walkthrough = '1. Talk to Quelveuiat. (I-10, Middle Floor)\n2. Zone into Lufaise Meadows by taking the south exit at (I-6).\n3. Head to (H-10) afterwards.\n   - Clear any nearby Orcs as they will link.\n4. Click the ??? at the top of the platform to spawn Splinterspine Grukjuk, a Ranger Orc NM.\n   - Defeat Splinterspine Grukjuk.\n5. Return to Tavnazian Safehold and speak with Quelveuiat to complete the quest.\n\nOptional:\n\n6. After completing the quest you may trade Quelveuiat a Sealion Crest Key and a  Coral Crest Key to obtain a [Key Item] Temple Knight key.\n   - This allows you to open the large door to the inner part of Sacrarium at (H-7) solo.',
         notes = nil,
     },
     ['A Moral Manifest?'] = {
@@ -98,7 +98,7 @@ return {
         requirements = {
             {name = 'Gusgen Clay', count = 1},
         },
-        walkthrough = '1. Speak to Nereus (I-8) near the Proto-Waypoint to begin this quest.\n2. Go to I-7 (third map) in Gusgen Mines, near a pond, and click on the "Clay" to obtain Gusgen Clay:\n   - Sneak will be useful, as there are level 85+ monsters in this area.\n     - You can gain Sneak and Invisible by purchasing Circumspection from the Grounds Tome at (H-7), however only do so after opening the below door.\n   - Use the Survival Guide warp then head north.\n   - Run down the stairs and enter the rightmost door at (H-6). If the door is closed, use the lever to open the door; you cannot use the lever if you are Invisible.\n   - Drop down the hole in the northeastern corner of (I-6) on Map 2.\n   - You will find the clay near the right-most pond at (I-6/7) on Map 3.\n3. Bring the Gusgen Clay back to Nereus to complete the quest.',
+        walkthrough = '1. Speak to Nereus (I-8) near the Proto-Waypoint to begin this quest.\n2. Go to I-7 (third map) in Gusgen Mines, near a pond, and click on the "Clay" to obtain Gusgen Clay:\n   - Sneak will be useful, as there are level 85+ monsters in this area.\n     - You can gain Sneak and Invisible by purchasing Circumspection from the Grounds Tome at (H-7), however only do so after opening the below door.\n   - Use the Survival Guide warp then head north.\n   - Run down the stairs and enter the rightmost door at (H-6). If the door is closed, use the lever to open the door; you cannot use the lever if you are Invisible.\n   - Drop down the hole in the northeastern corner of (I-6) on Map 2.\n   - You will find the clay near the right-most pond at (I-6/7) on Map 3.\n3. Bring the Gusgen Clay back to Nereus to complete the quest.\n\nNotes:\n\n4. You must wait 8 hours before repeating this quest.',
         notes = '1. You must wait 8 hours before repeating this quest.',
     },
     ['An Affable Adamantking?'] = {
@@ -137,7 +137,7 @@ return {
             {name = 'Selbina Clay', count = 1},
             {name = 'Clay Tablet', count = 1},
         },
-        walkthrough = '1. Talk to Abelard (G-9) to receive Selbina Clay.\n2. Trade the Selbina Clay to a Stone Monument to receive a Clay Tablet.\n   - If you interact with the monument, you will receive extensive and interesting Lore background of the area.\n     - The inscriptions are available on the Stone Monument page.\n3. Return to Abelard and trade the Clay Tablet to him.\n4. Repeat for the remaining Stone Monuments. The quest will not "Complete" until you finish all tablets.',
+        walkthrough = '1. Talk to Abelard (G-9) to receive Selbina Clay.\n2. Trade the Selbina Clay to a Stone Monument to receive a Clay Tablet.\n   - If you interact with the monument, you will receive extensive and interesting Lore background of the area.\n     - The inscriptions are available on the Stone Monument page.\n3. Return to Abelard and trade the Clay Tablet to him.\n4. Repeat for the remaining Stone Monuments. The quest will not "Complete" until you finish all tablets.\n\nThe Monuments in the Past:\n\nThe following three monuments exist in the Shadowreign, and you can copy them with the Selbina Clay; however, when you trade them there is no response from Abelard.',
         notes = nil,
     },
     ['An Understanding Overlord?'] = {
@@ -1131,7 +1131,7 @@ return {
             {name = 'Millioncorn x3 or', count = 1},
             {name = 'Boyahda Moss', count = 1},
         },
-        walkthrough = '1. Trade Melyon any of the following to complete this quest.',
+        walkthrough = '1. Trade Melyon any of the following to complete this quest.\n\nNotes::\n\n2. Repeating this quest several times is the easiest way to improve your reputation in Bastok, San d\'Oria, Jeuno, Selbina, and Rabao.\n3. 6 stacks of Boyahda Moss should reach Fame level 9, or\n4. 24 stacks of Millioncorn should reach Fame level 9, or\n5. 75 stacks of La Theine Cabbage should reach Fame level 9',
         notes = nil,
     },
     ['Orlando\'s Antiques'] = {

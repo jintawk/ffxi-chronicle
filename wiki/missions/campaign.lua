@@ -465,7 +465,7 @@ return {
         previous = nil,
         next = nil,
         requirements = nil,
-        walkthrough = 'Note: This special campaign ops is only available when Beadeaux (S) is under the control of Bastok.\n1. Head to Beadeaux (S) after selecting the mission.\n2. Obtain a Diamond Seal (Key Item).\n   - The key item drops off any of the Quadav\'s in Beadeaux (S) (excluding NM\'s).\n   - It can be obtained when the campaign op isn\'t flagged, so check that you don\'t have it before you begin farming it.\n   - Every member of the party currently in the zone will receive a stone when it drops.\n3. You will also need a Quadav Charm to get to the Qulun Dome area of the zone.\n4. Make your way to the Qulun Dome area (L-8) on Map 2 and examine the Ironbound Gate to enter the battlefield.',
+        walkthrough = 'Note: This special campaign ops is only available when Beadeaux (S) is under the control of Bastok.\n1. Head to Beadeaux (S) after selecting the mission.\n2. Obtain a Diamond Seal (Key Item).\n   - The key item drops off any of the Quadav\'s in Beadeaux (S) (excluding NM\'s).\n   - It can be obtained when the campaign op isn\'t flagged, so check that you don\'t have it before you begin farming it.\n   - Every member of the party currently in the zone will receive a stone when it drops.\n3. You will also need a Quadav Charm to get to the Qulun Dome area of the zone.\n4. Make your way to the Qulun Dome area (L-8) on Map 2 and examine the Ironbound Gate to enter the battlefield.\n\nCracking Shells:\n\n5. Trusts can be summoned and there is no level cap for this battlefield.\n6. Inside the battlefield, you will face four Quadav NMs.\n   - Za\'Dha Adamantking (RNG)\n   - Di\'Mho Platekeeper (WHM)\n   - Zi\'Bhe Gauntletkeeper (BLM)\n   - Zo\'Bha Helmkeeper (RDM)\n7. Only Za\'Dha Adamantking has to be defeated to win the fight.\n   - Za\'Dha Adamantking will use Eagle Eye Shot.\n   - Za\'Dha Adamantking is immune to Sleep, but nothing else.\n8. His helpers are much weaker, with no known immunities. They will respawn shortly after they are defeated. The helpers share hate with Za\'Dha Adamantking.\n9. Once Za\'Dha Adamantking is defeated, an Armoury Crate will spawn.\n10. Return to Hieronymus to complete the mission.',
         notes = nil,
     },
     ['Crimson Domino I (B)'] = {
@@ -1859,7 +1859,7 @@ return {
         previous = nil,
         next = nil,
         requirements = nil,
-        walkthrough = '1. After speaking with Hieronymus, go to Bastok Markets (S) (H-9) and speak to the Quartermaster to learn what items are needed.\n2. Acquire the items requested by the Quartermaster and trade them to her for your reward.',
+        walkthrough = '1. After speaking with Hieronymus, go to Bastok Markets (S) (H-9) and speak to the Quartermaster to learn what items are needed.\n2. Acquire the items requested by the Quartermaster and trade them to her for your reward.\n\nNotes:\n\nItems requested by the Quartermaster\n12x Crystals',
         notes = 'Items requested by the Quartermaster\n12x Crystals',
     },
     ['Materiel Storm I (S)'] = {
@@ -1910,7 +1910,7 @@ return {
         previous = nil,
         next = nil,
         requirements = nil,
-        walkthrough = '1. After speaking with Hieronymus, go to Bastok Markets (S) (H-9) and speak to the Quartermaster to learn what items are needed.\n2. Acquire the items requested by the Quartermaster and trade them two her for your reward.',
+        walkthrough = '1. After speaking with Hieronymus, go to Bastok Markets (S) (H-9) and speak to the Quartermaster to learn what items are needed.\n2. Acquire the items requested by the Quartermaster and trade them two her for your reward.\n\nNotes:\n\nItems requested by the Quartermaster\n3. 6 Smoked Salmon\n4. 4 Roast Mushrooms\n5. 4 Grilled Hares\n6. 4 Stamina Apples\n7. 3 Dhalmel Steak\n8. 8 Pots of Honey\n9. 6 Baked Apples\n10. 12 Boiled Crayfish\n11. 12 Roasted Corn\n12. 4 Roast Carp\n13. 4 Roasted Almonds\n14. 12 Meat Jerky\n15. 6 Baked Apple\n16. 4 Stamina Apple\n17. 4 Shadow Apple',
         notes = 'Items requested by the Quartermaster\n1. 6 Smoked Salmon\n2. 4 Roast Mushrooms\n3. 4 Grilled Hares\n4. 4 Stamina Apples\n5. 3 Dhalmel Steak\n6. 8 Pots of Honey\n7. 6 Baked Apples\n8. 12 Boiled Crayfish\n9. 12 Roasted Corn\n10. 4 Roast Carp\n11. 4 Roasted Almonds\n12. 12 Meat Jerky\n13. 6 Baked Apple\n14. 4 Stamina Apple\n15. 4 Shadow Apple',
     },
     ['Materiel Storm II (S)'] = {
@@ -1961,7 +1961,7 @@ return {
         previous = nil,
         next = nil,
         requirements = nil,
-        walkthrough = '1. After speaking with Hieronymus, go to Bastok Markets (S) (H-9) and speak to the Quartermaster to learn what items are needed.\n2. Acquire the items requested by the Quartermaster and trade them two her for your reward.',
+        walkthrough = '1. After speaking with Hieronymus, go to Bastok Markets (S) (H-9) and speak to the Quartermaster to learn what items are needed.\n2. Acquire the items requested by the Quartermaster and trade them two her for your reward.\n\nNotes:\n\nItems requested by the Quartermaster\n3. 3 Eye Drops\n4. 3 Echo Drops\n5. 5 Silent Oils\n6. 5 Deodorizers\n7. 2 Silencing Potions\n8. 1 Hi-Potion\n9. 3 Holy Waters\n10. 5 Prism Powders\n11. 2 Poison Potions\n12. 2 Paralyze Potions\n13. 1 Venom Potions\n14. 2 Blinding Potions',
         notes = 'Items requested by the Quartermaster\n1. 3 Eye Drops\n2. 3 Echo Drops\n3. 5 Silent Oils\n4. 5 Deodorizers\n5. 2 Silencing Potions\n6. 1 Hi-Potion\n7. 3 Holy Waters\n8. 5 Prism Powders\n9. 2 Poison Potions\n10. 2 Paralyze Potions\n11. 1 Venom Potions\n12. 2 Blinding Potions',
     },
     ['Materiel Storm III (S)'] = {
@@ -1978,7 +1978,7 @@ return {
         previous = nil,
         next = nil,
         requirements = nil,
-        walkthrough = '1. Solo mission\n   - If you are in a party, each member will be asked for different materials\n2. Speak with the Quartermaster at (I-9)\n3. She will ask players to bring different items to her in order to complete this Operation.',
+        walkthrough = '1. Solo mission\n   - If you are in a party, each member will be asked for different materials\n2. Speak with the Quartermaster at (I-9)\n3. She will ask players to bring different items to her in order to complete this Operation.\n\nNotes:\n\nItems requested by the Quartermaster\n4. 3 Eye Drops\n5. 5 Silent Oils\n6. 5 Deodorizers\n7. 2 Silencing Potions\n8. 4 Potion\n9. 1 Hi-Potion\n10. 3 Holy Waters\n11. 3 Echo Drops\n12. 2 Poison Potion',
         notes = 'Items requested by the Quartermaster\n1. 3 Eye Drops\n2. 5 Silent Oils\n3. 5 Deodorizers\n4. 2 Silencing Potions\n5. 4 Potion\n6. 1 Hi-Potion\n7. 3 Holy Waters\n8. 3 Echo Drops\n9. 2 Poison Potion',
     },
     ['Materiel Storm III (W)'] = {
@@ -2012,7 +2012,7 @@ return {
         previous = nil,
         next = nil,
         requirements = nil,
-        walkthrough = '1. After speaking with Hieronymus, go to Bastok Markets (S) (H-9) and speak to the Quartermaster to learn what items are needed.\n2. Acquire the items requested by the Quartermaster and trade them to her for your reward.',
+        walkthrough = '1. After speaking with Hieronymus, go to Bastok Markets (S) (H-9) and speak to the Quartermaster to learn what items are needed.\n2. Acquire the items requested by the Quartermaster and trade them to her for your reward.\n\nNotes:\n\nItems requested by the Quartermaster\n3. 1 Melon Juice\n4. 1 Mushroom Soup\n5. 6 Windurst Tacos  (Will not accept Timbre Timbers Taco.)\n6. 1 Tomato Juice\n7. 1 Orange au Lait\n8. 1 Yagudo Drink\n9. 33 Ginger Cookies\n10. 3 Roast Trout\n11. 1 Icecap Rolanberry',
         notes = 'Items requested by the Quartermaster\n1. 1 Melon Juice\n2. 1 Mushroom Soup\n3. 6 Windurst Tacos  (Will not accept Timbre Timbers Taco.)\n4. 1 Tomato Juice\n5. 1 Orange au Lait\n6. 1 Yagudo Drink\n7. 33 Ginger Cookies\n8. 3 Roast Trout\n9. 1 Icecap Rolanberry',
     },
     ['Materiel Storm IV (S)'] = {
@@ -2029,7 +2029,7 @@ return {
         previous = nil,
         next = nil,
         requirements = nil,
-        walkthrough = '1. Solo mission\n   - If you are in a party, each member will be asked for different materials\n2. Speak with the Quartermaster at (I-9)\n3. She will ask players to bring different items to her in order to complete this Operation.',
+        walkthrough = '1. Solo mission\n   - If you are in a party, each member will be asked for different materials\n2. Speak with the Quartermaster at (I-9)\n3. She will ask players to bring different items to her in order to complete this Operation.\n\nNotes:\n\nItems requested by the Quartermaster\n4. 4 Apple Pies\n5. 6 Salmon Roe\n6. 1 Eel Kabob\n7. 3 Roast Trout\n8. 1 Icecap Rolanberry\n9. 33 Ginger Cookie\n10. 33 Bretzel',
         notes = 'Items requested by the Quartermaster\n1. 4 Apple Pies\n2. 6 Salmon Roe\n3. 1 Eel Kabob\n4. 3 Roast Trout\n5. 1 Icecap Rolanberry\n6. 33 Ginger Cookie\n7. 33 Bretzel',
     },
     ['Materiel Storm IV (W)'] = {
@@ -2199,7 +2199,7 @@ return {
         previous = nil,
         next = nil,
         requirements = nil,
-        walkthrough = 'Note: This special campaign ops is only available when Castle Oztroja (S) is under the control of Windurst.\n1. Head to Castle Oztroja (S) after selecting the mission.\n2. Obtain a Xicu\'s Rosary (Key Item).\n   - The key item drops off any of the Yagudo\'s in Castle Oztroja (S) (excluding NM\'s).\n   - It can be obtained when the campaign op isn\'t flagged, so check that you don\'t have it before you begin farming it.\n   - Every member of the party currently in the zone will receive a stone when it drops.\n3. Make your way to the top floor and examine the Collapsing Floor (H-7) to enter the battlefield.',
+        walkthrough = 'Note: This special campaign ops is only available when Castle Oztroja (S) is under the control of Windurst.\n1. Head to Castle Oztroja (S) after selecting the mission.\n2. Obtain a Xicu\'s Rosary (Key Item).\n   - The key item drops off any of the Yagudo\'s in Castle Oztroja (S) (excluding NM\'s).\n   - It can be obtained when the campaign op isn\'t flagged, so check that you don\'t have it before you begin farming it.\n   - Every member of the party currently in the zone will receive a stone when it drops.\n3. Make your way to the top floor and examine the Collapsing Floor (H-7) to enter the battlefield.\n\nPlucking Wings:\n\n4. Trusts can be summoned and there is no level cap for this battlefield.\n5. Inside the battlefield, you will face four Yagudo NMs.\n   - Soo Luma the Ascended (SCH)\n   - Jii Xai the Rimebladed (SAM)\n   - Roo Beju the Eulogizer (BRD)\n   - Zjaa Bao the Wrathherald (NIN)\n6. Only Soo Luma the Ascended has to be defeated to win the fight.\n   - Soo Luma the Ascended will use Tabula Rasa and has access to all tier IV Black Magic as well as White Magic spells.\n   - He has an apparently permanent Accession and Manifestation status, which causes all of the appropriate spells to be AoE, centered on the target.\n   - Soo Luma the Ascended is immune to Sleep, but nothing else.\n7. His helpers are much weaker, with no known immunities. They will respawn shortly after they are defeated. The helpers share hate with Soo Luma the Ascended.\n8. Once Soo Luma the Ascended is defeated, an Armoury Crate will spawn.\n9. Return to Emhi Tchaoryo to complete the mission.',
         notes = nil,
     },
     ['Prying Eyes I (B)'] = {
@@ -2420,7 +2420,7 @@ return {
         previous = nil,
         next = nil,
         requirements = nil,
-        walkthrough = 'After confirming the mission with Emhi Tchaoryo, go to a Beastmen controlled area in the Northlands, such as Beaucedine Glacier (S). Find the ??? near the fortification and click it to place a bomb. The bomb will explode after quite a while. Check the ??? again for an XP reward, and a message stating "The stronghold has sustained considerable damage." Failure to do so will result in the Ops Mission being a failure. Return to Emhi Tchaoryo to finish the mission and get your Allied Notes reward.',
+        walkthrough = 'After confirming the mission with Emhi Tchaoryo, go to a Beastmen controlled area in the Northlands, such as Beaucedine Glacier (S). Find the ??? near the fortification and click it to place a bomb. The bomb will explode after quite a while. Check the ??? again for an XP reward, and a message stating "The stronghold has sustained considerable damage." Failure to do so will result in the Ops Mission being a failure. Return to Emhi Tchaoryo to finish the mission and get your Allied Notes reward.\n\nList of ???s:\n\n1. Beaucedine Glacier (S): (I-8) (ENE Side)',
         notes = '1. It is possible to use the ??? for this mission while no Fortifications are present and no Campaign Battle is going. Doing so still completes the mission and gives rewards.\n2. It is possible for the ??? to reset during a bomb, disallowing it to go off. The resulting ??? will start saying "You find nothing out of the ordinary." This usually happens during a preparation phase to a Campaign Battle. If this happens, the Campaign Ops has failed.',
     },
     ['Smokescreen I (B)'] = {
@@ -3134,7 +3134,7 @@ return {
         previous = nil,
         next = nil,
         requirements = nil,
-        walkthrough = '1. Easily soloable mission\n2. After confirming the mission with Emhi Tchaoryo, go to a Windurstian controlled Campaign area and talk to the Gate Sentry.',
+        walkthrough = '1. Easily soloable mission.\n2. After confirming the mission with Emhi Tchaoryo, go to a Windurstian controlled Campaign area and talk to the Gate Sentry.\n\nList of Gate Sentries:\n\n3. West Sarutabaruta (S): (I-4)\n4. Sauromugue Champaign (S): (K-11)\n5. Fort Karugo-Narugo (S): (E-11)\n6. Your mission is to escort an NPC named "Reinforcement" to the  of the zone.\n   - If you get too far away from the NPC, she will say a line of dialogue and proceed to run on her own back towards the Gate Sentry.\n   - You can regain control of the NPC by talking to her again.\n\nList of Campaign NPCs:\n\n7. West Sarutabaruta (S): (H-6)\n8. Fort Karugo-Narugo (S): Lamurara, C.C. at (H-8) inside Fivespires (Not on the main map.)\n9. Once you\'ve arrived at the , the mission will end, you will receive the experience points and you will be told to report back to Emhi Tchaoryo.\n   - If a campaign battle is currently in progress, the NPC will stand there, but not despawn. You will have to wait for it to finish for the mission to be counted as a success.\n10. After talking to Emhi Tchaoryo, you gain the Allied Notes and the mission is complete.',
         notes = nil,
     },
     ['Vanguard-X II (B)'] = {
