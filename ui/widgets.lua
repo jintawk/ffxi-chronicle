@@ -1369,6 +1369,7 @@ function widgets.Panel(opts)
     self._collapsed = opts.collapsed or false
     self._title_text = opts.title or 'Panel'
     self._children = {}
+    self._is_panel = true
 
     self.on_collapse = opts.on_collapse
     self.on_close = opts.on_close
@@ -2671,14 +2672,27 @@ end)
 -- Cleanup function — destroy all tracked widgets
 ---------------------------------------------------------------------------
 function widgets.cleanup()
+    -- Destroy Panels first; Panel:destroy cascades into clear_children, which
+    -- destroys (and unregisters) every child it owns. Destroying a child Button
+    -- before its parent Panel would cause the Panel's later clear_children to
+    -- re-destroy that child, double-freeing its underlying text/image objects.
     local ids = {}
     for id in pairs(clickables) do ids[#ids + 1] = id end
+
+    for _, id in ipairs(ids) do
+        local w = clickables[id]
+        if w and w._is_panel and w.destroy then
+            w:destroy()
+        end
+    end
+
     for _, id in ipairs(ids) do
         local w = clickables[id]
         if w and w.destroy then
             w:destroy()
         end
     end
+
     clickables = {}
     drag_state = nil
     mouse_down_target = nil
