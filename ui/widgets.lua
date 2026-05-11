@@ -2528,8 +2528,13 @@ windower.register_event('mouse', function(type, x, y, delta, blocked)
             end
         end
 
-        -- Block mouse move over panel to prevent camera/character movement
-        return over_any_panel(x, y)
+        -- Don't block mouse-move events. Swallowing type-0 events freezes
+        -- FFXI's cursor tracking, so once the in-game cursor is hidden
+        -- (e.g. after Esc), it can't reappear while over the panel. Camera
+        -- rotation needs the right mouse button held, so move-only events
+        -- are safe to pass through. Clicks (types 1-5) are still blocked
+        -- below to stop click-through to the world.
+        return false
     end
 
     -- Left click down

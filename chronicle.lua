@@ -27,7 +27,7 @@
 _addon.name = 'chronicle'
 _addon.author = 'Jintawk'
 _addon.commands = {'chronicle', 'cr'}
-_addon.version = '1.2.2'
+_addon.version = '1.2.3'
 
 local config = require('config')
 local packets = require('packets')
