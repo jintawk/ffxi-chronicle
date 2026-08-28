@@ -790,7 +790,7 @@ return {
             {name = 'Mythril Beastcoin', count = 3}            
         },
         walkthrough = 'NOTE: This is not a trackable quest in-game. It is an item obtainment sequence that exists in the game data but does not appear in your quest log and has no completion flag.\n\n1. Speak to Gimb in Norg to learn about obtaining a Sahagin Key.\n2. Travel to Sea Serpent Grotto and go past the Gold Door at (I-11) on the 4th map.\n3. Proceed to (H-11) and run off the cliff. Immediately run off the next cliff.\n4. Turn south and run off the cliff instead of continuing forward.\n5. Follow the left wall past the Cracked Wall to the Charybdis room and speak to Bou the Righteous.\n   - Do NOT leave Sea Serpent Grotto before completing the next step or you will have to speak to Bou again.\n6. Go past the Silver Door at (H-3) on the 2nd map and speak to Hurr the Betrayer.\n7. Trade Hurr 3 Mythril Beastcoins and 1 Norg Shell to receive a Sahagin Key.\n   - Additional keys can be obtained by trading 1 Gold Beastcoin and 1 Norg Shell to Hurr.\n   - The key breaks upon use at the Ornamental Door at (J-11).',
-        notes = nil,
+        notes = '1. The Sahagin Key is needed to get beyond the Ornamental Door at (J-11) in Sea Serpent Grotto.  The item will break upon use.',
     },
     ['The Sahagin\'s Stash'] = {
         id = 136,

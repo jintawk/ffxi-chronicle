@@ -125,7 +125,7 @@ return {
         previous = {'The Empress Crowned'},
         next = nil,
         requirements = nil,
-        walkthrough = '1. Approach Naja Salaheem for the final cutscene and to get your Glory Crown back.',
+        walkthrough = '1. Approach Naja Salaheem for the final cutscene and to get your Glory Crown back.\n\nTrust: Nashmeira:\n\n1. After completing this mission, you may obtain Nashmeira as a trust by returning to the Imperial Whitegate.',
         notes = nil,
     },
     ['Fangs of the Lion'] = {
@@ -431,7 +431,7 @@ return {
         previous = {'Guests of the Empire'},
         next = {'Sweets for the Soul'},
         requirements = nil,
-        walkthrough = '1. Approach Naja Salaheem for a cutscene.\nOptional: After completing the mission, you will be eligible for  Ashu Talif Assault.',
+        walkthrough = '1. Approach Naja Salaheem for a cutscene.\nOptional: After completing the mission, you will be eligible for  Ashu Talif Assault.\n\nTrust: Gessho:\n\n1. After completing this mission, you may examine the cushion in Aht Urhgan Whitegate (J-12) to acquire Cipher: Gessho.',
         notes = nil,
     },
     ['Path of Blood'] = {

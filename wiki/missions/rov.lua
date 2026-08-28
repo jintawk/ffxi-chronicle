@@ -57,7 +57,7 @@ return {
         previous = {'The Orb\'s Radiance'},
         next = nil,
         requirements = nil,
-        walkthrough = '1. Watch the ending cutscene.\n2. Congratulations, you beat the game!\nAfter this mission, you have the ability to begin The Voracious Resurgence Missions.',
+        walkthrough = '1. Watch the ending cutscene.\n2. Congratulations, you beat the game!\nAfter this mission, you have the ability to begin The Voracious Resurgence Missions.\n\nEnding Theme Chorus Credits by Server:\n\nFireice',
         notes = nil,
     },
     ['Absolute Trust'] = {
@@ -278,7 +278,7 @@ return {
         previous = {'Crashing Waves'},
         next = {'Numbering Days'},
         requirements = nil,
-        walkthrough = '1. Zone into Port Jeuno for a cutscene.',
+        walkthrough = '1. Zone into Port Jeuno for a cutscene.\n\nPlot Details:\n\n1. The Reisenjima Orb\n   - Back in RoV Mission 2-1 (Spirits Awoken), Kagero may have said "This orb connects the bearer with a higher power. Mayhap it will display its true form only to those who open up their hearts to it.", depending on your CoP Mission progress at the time.\n   - If you had completed CoP chapter 1  before that mission, she would have said instead it connects the bearer with the Mothercrystal.\n   - Some of your s are called forth from the orb, filled with its light.\n     - Their light/blur visual effect can be toggled on or off with the command /localsettings blureffect [on/off].',
         notes = '1. You will be unable to receive this cutscene if you are currently on one of the following missions:\n   - CoP Mission 3-5 Darkness Named\n   - CoP Mission 5-3 Three Paths\n   - CoP Mission 6-4 One to be Feared\n   - CoP Mission 8-4 Dawn (post-battle final cutscenes)\n2. You will receive the message "The bonds tying you to Altana have strengthened, enabling you to experience all the memories of Chains of Promathia!"\n3. You must obtain the Cipher: Prishe II in order to complete the mission. If your inventory was full and you did not receive, check the Mystic Retriever in Port Jeuno near the guide stone.',
     },
     ['Calm After the Storm'] = {
@@ -449,7 +449,7 @@ return {
         next = {'The Decisive Heroine'},
         requirements = nil,
         walkthrough = '1. Head to (G-5) in Misareaux Coast and click the Undulating Confluence for a cutscene.\n2. Click the Undulating Confluence again to enter Escha - Ru\'Aun for another cutscene.',
-        notes = nil,
+        notes = '1. Ru\'Aun Gardens consists of 15 islands. The main island is surrounded by four long islands. Though technically not islands, as they are connected to the main island by small inaccessible hallways, said hallways are inaccessible. These four longer islands are surrounded by four smaller islands with five miniscule islands between them.\n2. Travel between islands is governed by the various eschan portals (numbered 1~15) located throughout the zone.\n      - By examining one of the ???s that are spread throughout the zone, a player will be given a temporary item known as an Eschan Droplets, which can be used to teleport players between eschan portals, but only in ascending numerical order; however, once any eschan portal has been examined, a player may teleport to it at any time for a variable price of silt.\n3. Speak to Dremi at the entrance of Escha Ru\'Aun to use Escha Silt to obtain Key Items, purchase enhancements known as Vorseals, and purchase Geas Fete Notorious Monster pops (see above for a list of NMs).\n4. Speak to Nolan in Norg to augment equipment obtained from Escha.\nSee for Further Information:\n5. Escha',
     },
     ['Ever Forward'] = {
         id = 164,
@@ -482,7 +482,7 @@ return {
         previous = {'Eyes on You'},
         next = {'Become Something More'},
         requirements = nil,
-        walkthrough = '1. Examine the Cermet Grate right in front of you in the Hall of the Gods for a cutscene.',
+        walkthrough = '1. Examine the Cermet Grate right in front of you in the Hall of the Gods for a cutscene.\n\nTrusts:\n\n1. After completing this Mission: go to Ru\'Lude Gardens, speak to Jamal (H-5) to unlock .\n   - Complete the objectives to receive Cipher: Ark GK, Cipher: Ark EV, Cipher: Ark MR, Cipher: Ark HM, and Cipher: Ark TT.\n   - These objectives are also a requirement for the [Key Item] Filled memory gem, which raises the level of your Trusts. For details, see: Marjory.',
         notes = nil,
     },
     ['Eyes on You'] = {
@@ -550,7 +550,7 @@ return {
         previous = {'The Beginning'},
         next = {'The Path Untraveled'},
         requirements = nil,
-        walkthrough = 'Examine the Oaken Door at (K-8) in Norg to Gilgamesh\'s room.\n1. This is a second time after the previous mission.',
+        walkthrough = 'Examine the Oaken Door at (K-8) in Norg to Gilgamesh\'s room.\n1. This is a second time after the previous mission.\n\nNote:\n\n1. Experience and Skill Gains\n   - 30% bonus to experience and limit points gains.\n   - 100% increase to combat and magic skill gains.\n2. Fields of Valor\n   - Reduction in the amount of tabs required for the following effects.\n     - Homing instinct: From 50 to 25\n     - Repatration: From 50 to 10\n     - White magic: Reraise: from 10 to 5\n     - White magic: Reraise II: from 20 to 10\n     - White magic: Reraise III: from 30 to 15\n     - White magic: Regen: from 20 to 10\n     - White magic: Refresh: from 20 to 10\n     - White magic: Protect: from 15 to 5\n     - White magic: Shell: from 15 to 5\n     - White magic: Haste: From 20 to 10\n     - Field Recipe: Dried Meat: from 50 to 25\n     - Field Recipe: Salted Fish: from 50 to 25\n     - Field Recipe: Hard Cookie: from 50 to 25\n     - Field Recipe: Instant Noodles: from 50 to 25\n     - Field recipe: Dried Agaricus: from 50 to 25\n     - Field recipe: Instant Rice: From 50 to 25\n   - Reduction in the amount of gil and tabs consumed by Survival Guides.\n3. Alter Egos\n   - Increase of one to the maximum number of 4 alter egos able to be called forth at once.\n4. Other\n   - 80% reduction in gil consumed by home points\n   - Addition of items for sale by Curio Vendor Moogles located in the three nations.',
         notes = nil,
     },
     ['Forward Thinking'] = {
@@ -771,7 +771,7 @@ return {
         previous = {'Death Cares Not'},
         next = {'Sin'},
         requirements = nil,
-        walkthrough = '1. Examine the Transcendental Radiance once more to commence the No Time Like the Future battle.\n   - If you lose the fight, obtain another [Key Item] Cait Sith\'s whisker from Cait Sith outside of the BCNM.',
+        walkthrough = '1. Examine the Transcendental Radiance once more to commence the No Time Like the Future battle.\n   - If you lose the fight, obtain another [Key Item] Cait Sith\'s whisker from Cait Sith outside of the BCNM.\n\nBattle:\n\nYou will fight Sempurne.\n1. Sempurne itself is a "weakened" version of Shinryu from Abyssea - Empyreal Paradox.\n2. Sempurne uses all of Shinryu\'s abilities without the added ability to recover HP from taking damage while readying TP moves or Casting Magic.\n3. Easily soloable with Trusts as an iLvl DD Job.\n\nDirections to Sempurne:\n\n1. Here\'s how to get to Sempurne. This is useful if you are not in the middle of the Quest line and are only coming to learn Mighty Guard or help another player.\n2. Proceed to a Cavernous Maw.\n   - The Batallia Downs Maw at (H-5) is the most accessible as it is right next to the Survival Guide.\n     - Otherwise, the maw in Rolanberry Fields at (H-6) (also next to a Survival Guide) is a quick Mount ride from the Lower Jeuno Home Point #1 (E).\n3. Click the blue ??? right next to the Cavernous Maw.\n4. This will zone you into Walk of Echoes. You should be looking at the big purple staircase with only one purple lava lamp behind you. At no point in this journey should you go up the big staircase.\n5. Run slightly forward and to the right (north-east) to the white ??? and click it.\n6. This will zone you into Desuetia - Empyreal Paradox.\n7. Run straight ahead, and click on Transcendental Radiance to enter the Sempurne fight.',
         notes = nil,
     },
     ['Numbering Days'] = {
@@ -1179,7 +1179,7 @@ return {
         previous = {'The River Runs Red'},
         next = {'Forward Thinking'},
         requirements = nil,
-        walkthrough = '1. (Optional) Zone into any starting city zone (Bastok, San d\'Oria, Windurst) with a Mog House entrance for a cutscene telling you to go to Ceizak Battlegrounds.\n   - This will advance you to the next mission, Rhapsodies of Vanadiel Mission 3-5: Forward Thinking.\n2. Enter Ceizak Battlegrounds via either the Waypoint in Lower Jeuno, Waypoint in Adoulin, by zoning in from a connected Adoulin area, or from any Home Point crystal to Ceizak Battlegrounds.',
+        walkthrough = '1. (Optional) Zone into any starting city zone (Bastok, San d\'Oria, Windurst) with a Mog House entrance for a cutscene telling you to go to Ceizak Battlegrounds.\n   - This will advance you to the next mission, Rhapsodies of Vanadiel Mission 3-5: Forward Thinking.\n2. Enter Ceizak Battlegrounds via either the Waypoint in Lower Jeuno, Waypoint in Adoulin, by zoning in from a connected Adoulin area, or from any Home Point crystal to Ceizak Battlegrounds.\n\nNote:\n\n1. You must have finished Seekers of Adoulin Mission 1-7: Meeting of the Minds before the cutscene will start.',
         notes = nil,
     },
     ['The Cursed Temple'] = {
@@ -1196,7 +1196,7 @@ return {
         previous = {'Past Imperfect'},
         next = {'Wisdom of Our Forefathers'},
         requirements = nil,
-        walkthrough = 'Note: You must have completed Zilart Mission 4, The Temple of Uggalepih in order to receive the cutscene at the Granite Door.\n1. Head to Temple of Uggalepih in Yhoator Jungle (J-11) and enter for a cut scene.\n   - Quick Travel options:\n     - Survival Guide works as well. Some players reported not receiving this cutscene but still was able to progress in the next step.\n     - Unity Warp (122) to Yhoator Jungle will take you to Bloodlet Spring, just head south from there to (J-11).\n     - If you do not have Survival Guide, and you grabbed Den of Rancor HP #1 while completing Zilart Mission 4, you can use escape to be plopped right outside the zone to Temple of Uggalepih.\n2. Navigate your way to the Granite Door on Map 3 (J-6) (Check below for how to get there) for a cutscene.',
+        walkthrough = 'Note: You must have completed Zilart Mission 4, The Temple of Uggalepih in order to receive the cutscene at the Granite Door.\n1. Head to Temple of Uggalepih in Yhoator Jungle (J-11) and enter for a cut scene.\n   - Quick Travel options:\n     - Survival Guide works as well. Some players reported not receiving this cutscene but still was able to progress in the next step.\n     - Unity Warp (122) to Yhoator Jungle will take you to Bloodlet Spring, just head south from there to (J-11).\n     - If you do not have Survival Guide, and you grabbed Den of Rancor HP #1 while completing Zilart Mission 4, you can use escape to be plopped right outside the zone to Temple of Uggalepih.\n2. Navigate your way to the Granite Door on Map 3 (J-6) (Check below for how to get there) for a cutscene.\n\nGetting to (J-6):\n\n1. When you zone into Temple of Uggalepih from Yhoator Jungle (J-11), turn left after the initial stairs, then left again, and continue following the path, until you can go through the Granite Door at J-7. This enters a hidden section on the map.\n   - The Voidwatch NPC warp to the Temple of Uggalepih will put you at this entrance.\n2. Follow this path until you reach the top of the stairs at (J-3) (still off the visible part of the map) and zone out to Yhoator Jungle (J-9).\n3. Take each right (that doesn\'t dead-end in a tiny room), passing by the stairs leading to the ledge for an NM, and you will eventually zone back into the temple (still within Yhoator Jungle (J-9)).\n   - The Tonberry and Bees inside this section when you zone back in will aggro a level 99 by sight, as they are higher level than the enemies you passed to get here.\n4. Keep left the entire time until you reach the Granite Door at (J-6) in this area, then click it for the cutscene.',
         notes = nil,
     },
     ['The Decisive Heroine'] = {
@@ -1315,7 +1315,7 @@ return {
         previous = {'Absolute Trust'},
         next = {'A Rhapsody for the Ages'},
         requirements = nil,
-        walkthrough = '1. Examine the Reisen Crystal again to enter a Battlefield against the Cloud of Darkness.\n   - If you fail, get another [Key Item] Breath of the avatars at the Stone Circle in La Theine Plateau (G-6).\n   - Players that have already completed this Mission don\'t need the Key Item to join and help you in this fight.',
+        walkthrough = '1. Examine the Reisen Crystal again to enter a Battlefield against the Cloud of Darkness.\n   - If you fail, get another [Key Item] Breath of the avatars at the Stone Circle in La Theine Plateau (G-6).\n   - Players that have already completed this Mission don\'t need the Key Item to join and help you in this fight.\n\nAlly:\n\n1. You are assisted by Iroha, who will engage and pull when you move forward slightly or engage.\n   - Iroha will cast an AoE Protect V and Shell V as the battle starts. Then will cast Flare and Flare II throughout the fight and eventually Embrava.\n   - If defeated, Iroha will Arise herself an unlimited number of times.\n   - Iroha will cast Arise as needed on some players within 30\'. Not all players will be raised, though. Probably only those that are on the mission and not helping out.\n     - Arise will place a 4-5m weakened state on you after you accept.  Be aware of your HP before charging back in due to its reduced nature from weakness.\n     - Trusts can be resummoned after accepting Arise as long as you do not gain enmity, so running off after accepting will hopefully allow you to resummon trusts.\n\nEnemy:\n\n2. Cloud of Darkness uses heavy damage conal magic/breath TP moves.\n   - If using a Trust tank, re-position so it doesn\'t hit most of your other Trusts.\n3. Seems to absorb elemental damage based on the weather which changes often.\n4. Changes which elemental magics are cast based on the current weather effect, and will also spam elemental magic to the current day, especially during light weather since it has no light based magics.\n5. Begins absorbing either physical or magical damage after using Primordial Surge, an AoE move which draws-in nearby players, drains 300~700 HP from all players and upwards of over 3,000 HP from Iroha.\n   - The gem on its head will glow red during this phase.\n   - Watch Iroha\'s combat style to determine which damage type is being absorbed.\n     - During Physical absorption, Iroha will cease physical attacks and will frequently cast Fire VI and Flare spells.\n     - During (Light) Magic absorption, Iroha will only use physical attacks.\n     - There\'s a third absorption type where Iroha will continue to weave physical attacks and Fire spells, with neither of those being absorbed. It could be absorbing Darkness-Water-Ice-Earth magic damage or Breath damage instead.\n   - Phase will end after using Waning Vigor.\n     - The damage increases in power as the Cloud of Darkness absorbs damage. Players should be using the correct damage type during this phase to avoid being one-shotted.\n     - Waning Vigor will apply Weakness (15s) to the tank after it deals damage. Iroha may cast Embrava when the weakness wears off.\n     - This absorb phase may be canceled by dispelling the buffs it absorbs.\n     - At >25% Waning Vigor is replaced by a stronger version of the same move named Expunge which replaces the weakness with a full dispel.',
         notes = 'If you do not obtain the Cipher: Iroha II trust for reasons such as a full inventory, you can examine the Mystic Retriever in Reisenjima Sanctorium to obtain it.\nAssisting others if you have already cleared the fight will award a Reisen Shrine Glory for Exemplar Points.',
     },
     ['The Path Untraveled'] = {

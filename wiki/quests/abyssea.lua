@@ -316,7 +316,7 @@ return {
         previous = nil,
         next = nil,
         requirements = nil,
-        walkthrough = '1. Speak to Ohbiru-Dohbiru (A) at (H-7) and tell him you have found a pink fiend in the area.\n   - He is located near Conflux #07.\n2. Next talk to Kenapa-Keppa (A) in the northeast corner of (I-7) to receive [Key Item] Bucket of compound compost.\n3. Click the Lycopodium Rootprint targetable location which is west of the mountain at (H-7).\n   - This will spawn Rubicund Adenium, a Mandragora.\n4. Bring it to Kenapa-Keppa (A) to capture it, making sure not to let it despawn along the way (keep it within 20\').\n5. Lastly, speak with Kenapa-Keppa (A) after the full Warp II animation to complete the quest.\nZoning is required to repeat this quest.\nNote: This quest may only be completed once per Vana\'diel day.',
+        walkthrough = '1. Speak to Ohbiru-Dohbiru (A) at (H-7) and tell him you have found a pink fiend in the area.\n   - He is located near Conflux #07.\n2. Next talk to Kenapa-Keppa (A) in the northeast corner of (I-7) to receive [Key Item] Bucket of compound compost.\n3. Click the Lycopodium Rootprint targetable location which is west of the mountain at (H-7).\n   - This will spawn Rubicund Adenium, a Mandragora.\n4. Bring it to Kenapa-Keppa (A) to capture it, making sure not to let it despawn along the way (keep it within 20\').\n5. Lastly, speak with Kenapa-Keppa (A) after the full Warp II animation to complete the quest.\nZoning is required to repeat this quest.\nNote: This quest may only be completed once per Vana\'diel day.\n\nAugments:\n\nPossible augments on the Dance Shoes include the following:\n1. Accuracy+1~5\n2. HP+1~6\n3. MP+1~6\n4. +5~9\n5. Waltz Potency+1~4',
         notes = nil,
     },
     ['A Ward to End All Wards'] = {
@@ -2260,7 +2260,7 @@ return {
         requirements = {
             {name = 'Lambent Scale', count = 2},
         },
-        walkthrough = '1. Speak to Halver (A) at (L-11), near Veridical Conflux #06.\n2. He will request two Lambent Scales.\n3. Lambent Scales drop from Farfadets, a Thief with a high level of Treasure Hunter is recommended as the drop rate is not superb.\n4. Trade the Lambent Scales to Halver (A).\n   - You will complete the quest, and receive [Key Item] Vial of lambent potion. This is used for the next quest.\n5. Completing this quest 8 more times gives enough fame to open up Rank 6 fame quest with Glenne (A) across from Halver (A)\nZoning is not required to repeat this quest.',
+        walkthrough = '1. Speak to Halver (A) at (L-11), near Veridical Conflux #06.\n2. He will request two Lambent Scales.\n3. Lambent Scales drop from Farfadets, a Thief with a high level of Treasure Hunter is recommended as the drop rate is not superb.\n4. Trade the Lambent Scales to Halver (A).\n   - You will complete the quest, and receive [Key Item] Vial of lambent potion. This is used for the next quest.\n5. Completing this quest 8 more times gives enough fame to open up Rank 6 fame quest with Glenne (A) across from Halver (A)\nZoning is not required to repeat this quest.\n\nAugments:\n\nPossible augments include:',
         notes = nil,
     },
     ['Master Missing, Master Missed'] = {
