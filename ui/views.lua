@@ -33,6 +33,7 @@ local state = {
     current_view = nil,  -- {view_type, params}
     on_close = nil,      -- callback when close button clicked
     settings = nil,      -- reference to addon settings (for sort/filter persistence)
+    search_text = '',    -- item_list search, shared across lists like sort/filter
 }
 
 -- Sort/filter option tables
@@ -545,7 +546,7 @@ local function render_item_list(panel, cx, cy, cw, params)
     -- === TOOLBAR (search, sort, filter) ===
 
     -- Preserve toolbar state across re-renders via view params
-    local search_text = params.search_text or ''
+    local search_text = state.search_text or ''
     local sort_idx = params.sort_idx or (state.settings and state.settings.sort_mode or 1)
     local filter_idx = params.filter_idx or (state.settings and state.settings.filter_mode or 1)
 
@@ -556,7 +557,7 @@ local function render_item_list(panel, cx, cy, cw, params)
         height = theme.toolbar_height,
         placeholder = 'Search...',
         on_change = function(text)
-            params.search_text = text
+            state.search_text = text
             params.search_focused = true
             render_current()
         end,
