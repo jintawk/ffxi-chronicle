@@ -27,7 +27,7 @@
 _addon.name = 'chronicle'
 _addon.author = 'Jintawk'
 _addon.commands = {'chronicle', 'cr'}
-_addon.version = '1.4.1'
+_addon.version = '1.4.2'
 
 local config = require('config')
 local packets = require('packets')
@@ -109,6 +109,9 @@ local function build_ui()
         collapsed = was_collapsed,
         on_close = function()
             ui.visible = false
+            save_settings()
+        end,
+        on_move = function()
             save_settings()
         end,
     })
@@ -242,6 +245,17 @@ windower.register_event('login', function(name)
     config.reload(settings)
     theme.set_scale(settings.scale)
     data.set_show_uncompletable(settings.show_uncompletable)
+
+    -- A panel built before login sits at the global position and scale;
+    -- rebuild it from this character's settings
+    if ui.panel then
+        ui.panel:destroy()
+        ui.panel = nil
+        ui.visible = false
+    end
+    if settings.visible_on_load then
+        show_ui()
+    end
 end)
 
 windower.register_event('logout', function(name)

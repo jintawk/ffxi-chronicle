@@ -1373,6 +1373,7 @@ function widgets.Panel(opts)
 
     self.on_collapse = opts.on_collapse
     self.on_close = opts.on_close
+    self.on_move = opts.on_move
 
     -- Title bar background
     self._title_bg = images.new({
@@ -2617,8 +2618,10 @@ windower.register_event('mouse', function(type, x, y, delta, blocked)
 
         -- End panel drag
         if drag_state then
+            local panel = drag_state.panel
             drag_state = nil
             mouse_down_target = nil
+            if panel.on_move then panel.on_move(panel:get_pos()) end
             return true
         end
 
