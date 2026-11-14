@@ -1,0 +1,51 @@
+-- Chronicle walkthrough page, generated from BG-wiki
+-- (https://www.bg-wiki.com/ffxi/San_d'Oria_Mission_5-1). Text and pictures: BG-wiki contributors. Do not edit.
+return {
+    page = 'San d\'Oria Mission 5-1',
+    title = 'The Ruins of Fei\'Yin',
+    source = 'https://www.bg-wiki.com/ffxi/San_d\'Oria_Mission_5-1',
+    images = {'Fei\'Yin-map1.jpg'},
+    meta_order = {'Name', 'Series', 'Starting NPC', 'Title', 'Repeatable', 'Description', 'Previous Mission', 'Next Mission', 'Rewards'},
+    meta = {
+        ['Name'] = 'The Ruins of Fei\'Yin',
+        ['Series'] = 'Kingdom of San d\'Oria',
+        ['Starting NPC'] = 'Any San d\'Oria Gate Guard',
+        ['Title'] = 'Archmage Assassin',
+        ['Repeatable'] = '__No__',
+        ['Description'] = 'This mission involves traveling to {z:Fei\'Yin}, located on the {z:Beaucedine Glacier}. Visit {z:Chateau d\'Oraguille} to learn more.',
+        ['Previous Mission'] = '{M:Magicite|San d\'Oria Mission 4-1|Magicite}',
+        ['Next Mission'] = '{M:The Shadow Lord|San d\'Oria Mission 5-2|The Shadow Lord}',
+        ['Rewards'] = 'Rank Points'
+    },
+    body = [=[
+\**{c=red:Note:}** This Mission is the same for every other {z:Nation}.
+* Players who are on the same Mission (5-1 or higher) with the {@k} {k:New Fei'Yin seal}, or have completed it for their **current Nation**, will be able to join you.
+
+=2 Walkthrough
+!Fei'Yin-map1.jpg|right|Fei'Yin Map
+Head to {z:Chateau d'Oraguille} in {z:Northern San d'Oria} via HP #2 as the fastest route.
+* Zone into {z:Chateau d'Oraguille} for a cutscene that includes King Destin.
+* Visit any {n:Gate Guard} and accept the Mission.
+* Return to {z:Chateau d'Oraguille} and speak to {p:Halver} to receive {@k} {k:New Fei'Yin seal}.
+** If you are low level, you might want to use {p:Trusts} or form a party of lvl 50+ players.
+* Go to {z:Fei'Yin} (located in the northeast corner of {z:Beaucedine Glacier}) for a cutscene with {n:Zeid}. You will have to reach the {z:Qu'Bia Arena} and clear the BCNM "**The Rank 5 Mission**".
+** The majority of enemies in Fei'Yin detect by {@a:Sound|Detects by Sound} sound, however there are several that detect {@a:Magic|Detects by Magic} spellcasting.
+** Quick Travel options:
+*** {p:Home Point} #1 to {z:Fei'Yin} is the fastest way, it puts you right at the zone to {z:Qu'Bia Arena}.
+*** {p:Unity Warp} (Level 128) will place you at the entrance of {z:Fei'Yin}.
+*** {p:Unity Warp} (Level 125) will place you in the central area of {z:Beaucedine Glacier}.
+*** {n:Domenic} will teleport characters to {z:Qu'Bia Arena} for 1,000 gil (upon completion of {q:Beyond Infinity|Beyond Infinity|Beyond Infinity}). Just zone out for the cutscene (and the {p:Home Point}), then zone back in.
+** From the entrance of Fei'Yin:
+*** Go east to (K-8). There are 2 {m:Dolls|Doll} in front of a door named **Cermet Portal**, open it and you'll be able to enter Qu'Bia Arena.
+
+You will be able to prepare outside of the BC, however all buffs will wear upon entering. Plan accordingly and click the **Burning Circle** when ready to take on **The Rank 5 Mission**.
+* You only need to kill the Archlich to win.
+* You will be facing {m:Archlich Taber'quoan}. The Archlich will spawn with 2 {m:Ancient Sorcerers|Ancient Sorcerer}. {m:Ancient Warriors|Ancient Warrior} will also spawn in the hallway and run to help of the Archlich during the fight.
+** The Archlich is a {p:BLM}, and will cast spells like {s:Sleepga II} and {s:Freeze}, he may also use {p:Manafont}.
+** The lesser skeletons have very little {p:HP} and can be easily taken out by an AoE spell.
+** Focus attacks on the Archlich, a {p:Paladin} with {p:Invincible} is useful for managing the many extra mobs. A {p:Monk} using {p:Hundred Fists} also shines in this fight, due to the skeleton blunt penalty.
+* When you win, you'll be given another cutscene and receive {@k} {k:Burnt seal}.
+* Return to {p:Halver} to complete the Mission.
+
+]=],
+}

@@ -1,387 +1,582 @@
---Copyright (c) 2026, Jintawk
---All rights reserved.
+--[[
+Copyright (c) 2026, Jintawk
+All rights reserved.
 
---Redistribution and use in source and binary forms, with or without
---modification, are permitted provided that the following conditions are met:
+Redistribution and use in source and binary forms, with or without modification, are permitted
+provided that the following conditions are met:
 
---    * Redistributions of source code must retain the above copyright
---      notice, this list of conditions and the following disclaimer.
---    * Redistributions in binary form must reproduce the above copyright
---      notice, this list of conditions and the following disclaimer in the
---      documentation and/or other materials provided with the distribution.
---    * Neither the name of Chronicle nor the
---      names of its contributors may be used to endorse or promote products
---      derived from this software without specific prior written permission.
+    * Redistributions of source code must retain the above copyright notice, this list of
+      conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above copyright notice, this list of
+      conditions and the following disclaimer in the documentation and/or other materials
+      provided with the distribution.
+    * Neither the name of Chronicle nor the names of its contributors may be used to endorse or
+      promote products derived from this software without specific prior written permission.
 
---THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
---ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
---WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
---DISCLAIMED. IN NO EVENT SHALL Jintawk BE LIABLE FOR ANY
---DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
---(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
---LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
---ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
---(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
---SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR
+IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL JINTAWK BE LIABLE FOR ANY
+DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+]]
 
-_addon.name = 'chronicle'
+--[[
+    Chronicle: the quest and mission tracker drawn in the game's own windows.
+
+    libs/_chronicle.dll (source plugin/) draws above the game's UI with the game's window art and
+    fonts (core/nui.lua); everything else is Lua: data (core/data.lua, from packet 0x056), metadata
+    per area (core/meta.lua), screens (ui/screens/), the window (ui/window.lua). While it lives beside
+    v1 its names come from core/ident.lua.
+]]
+
+local HERE = windower.addon_path:gsub('\\', '/')
+if HERE:sub(-1) ~= '/' then HERE = HERE .. '/' end
+package.path = HERE .. '?.lua;' .. package.path
+
+local ident = require('core/ident')
+
+_addon.name = ident.name
 _addon.author = 'Jintawk'
-_addon.commands = {'chronicle', 'cr'}
-_addon.version = '1.4.2'
+_addon.version = ident.version
+_addon.commands = ident.commands
 
 local config = require('config')
 local packets = require('packets')
-local data = require('data')
-local widgets = require('ui/widgets')
-local theme = require('ui/theme')
-local views = require('ui/views')
-local wiki = require('wiki')
+
+local meta = require('core/meta')
+meta.set_root(HERE)
+local data = require('core/data')
+local wiki = require('core/wiki')
+local nui = require('core/nui')
+local App = require('core/app')
+local places = require('core/places')
+local ops = require('ui/ops')
+local keys = require('ui/keys')
+local Window = require('ui/window')
+local screens = {
+    home = require('ui/screens/home'),
+    area = require('ui/screens/area'),
+    guide = require('ui/screens/guide'),
+    settings = require('ui/screens/settings'),
+}
+local pages = require('core/pages')
+local progress = require('core/progress')
+
+local function char_name()
+    local p = windower.ffxi.get_player()
+    return p and p.name and p.name:lower() or 'global'
+end
+
+local function say(s, col) windower.add_to_chat(col or 207, ident.title .. ': ' .. s) end
 
 ---------------------------------------------------------------------------
--- Settings
+-- Settings (config library, per character)
 ---------------------------------------------------------------------------
 local defaults = {
-    pos = {x = 200, y = 150},
     visible_on_load = true,
     collapsed_on_load = false,
-    scale = 1.0,
-    sort_mode = 1,    -- 1=Default, 2=Name, 3=Status
-    filter_mode = 1,  -- 1=All, 2=Done, 3=Todo, 4=Uncompleted, 5=Uncompletable
-    active_tab = 'mission',  -- 'mission' or 'quest' (default tab on home view)
-    show_uncompletable = false,  -- show quests that can no longer be completed
+    size = 1.0,             -- view factor multiplier (v1's `scale`)
+    scale_mode = 'one',     -- one | ui | sim
+    rt_auto = true,         -- scale by render target / screen width (Windower supersampling)
+    sim_w = 2560, sim_h = 1440,
+    wintype = 0,            -- 0 follows the game's Config, 1-8 pins a type
+    sort_mode = 1,
+    filter_mode = 1,
+    active_tab = 'mission',
+    show_uncompletable = false,
+    share_textures = true,  -- false: keep this addon's own textures (start 'noshare'), not the shared cache
 }
+-- A settings.xml the stock config library cannot parse (half written by another client) makes config.load throw, and the addon
+-- would not load (review LIFE-6): the defaults are used instead, the file is left alone and nothing is saved until a load works
+-- (tried again at the next login).
+local settings, settings_ok
+local function load_settings()
+    local ok, s = pcall(config.load, defaults)
+    if ok and type(s) == 'table' then
+        settings, settings_ok = s, true
+        return true
+    end
+    if not settings then
+        settings = {}
+        for k, v in pairs(defaults) do settings[k] = v end
+    end
+    settings_ok = false
+    return false, s
+end
+do
+    local ok, err = load_settings()
+    if not ok then say('data/settings.xml unreadable, defaults in use: ' .. tostring(err):match('^[^\r\n]*'), 167) end
+end
+local function save() if settings_ok then settings:save() end end
 
-local settings = config.load(defaults)
+---------------------------------------------------------------------------
+-- The native layer, the app, the window
+---------------------------------------------------------------------------
+nui.load(HERE, ident.native)
 
--- Apply saved scale to theme
-theme.set_scale(settings.scale)
-
--- Apply saved uncompletable setting to data layer
+local app = App.new(data, settings, save)
+app.short = ident.short
+app.say = say
+app.check_requirements = wiki.check_requirements
 data.set_show_uncompletable(settings.show_uncompletable)
 
----------------------------------------------------------------------------
--- UI state
----------------------------------------------------------------------------
-local ui = {
-    panel = nil,
-    visible = false,
+-- quest step progress: observed read-only, kept per character in data/progress/
+app.progress = progress
+do
+    local p = windower.ffxi.get_player()
+    progress.init(data, say, p and p.name)
+end
+
+local win = nil
+
+local function apply_view()
+    nui.view.mode = settings.scale_mode == 'sim' and 'sim' or (settings.scale_mode == 'ui' and 'ui' or 'one')
+    nui.view.sim_w, nui.view.sim_h = settings.sim_w, settings.sim_h
+    nui.view.auto = settings.rt_auto ~= false
+    nui.view.size = settings.size or 1
+    local _, why = nui.apply()
+    if why then say(why) end
+end
+
+local function save_place()
+    if not win then return end
+    local sw, sh = nui.screen()
+    places.save(HERE, char_name(), sw, sh, {x = win.x, y = win.y, w = win.w, h = win.h})
+end
+
+local function place_window()
+    local sw, sh = nui.screen()
+    local p = places.load(HERE, char_name(), sw, sh)
+    win:set_screen_size(sw, sh)
+    win:resend()            -- a new screen or scale: every layer sent again, as before the identical-text skip (ui/window.lua)
+    if p then
+        win.w, win.h = Window.clamp_size(p.w, p.h, sw, sh)
+        win.x = math.max(0, math.min(p.x, sw - 60))
+        win.y = math.max(0, math.min(p.y, sh - 40))
+    end
+end
+
+local function show_screen(scroll)
+    if not win then return end
+    pages.close()                       -- first: it keeps the scroll the page is left at
+    win:set_screen(screens[app.view.name] or screens.home, scroll)
+    if app.view.name == 'guide' and pages.open(app.view.params) then
+        win:flush()
+        local y = pages.saved_scroll()
+        if y then win:scroll_to(y) end
+    end
+    win:flush()
+end
+app.on_change = show_screen
+
+-- While the UI hook is not there yet (no native-UI module has found the game's EndScene wrapper), start again from prerender,
+-- after retry_s seconds, then 30 s, then 2 minutes, then give up with one line (review LIFE-1: a signature an SE update broke
+-- never comes back, and each try stalls the game). Said once when it starts waiting; a command that shows the window starts over.
+local RETRY_AFTER = {nil, 30, 120}         -- [1] is the DLL's own retry_s
+local retry = {at = nil, said = false, show = false, n = 0}
+
+local function start(again)
+    if win then return true end
+    if not again then retry.n = 0 end
+    apply_view()
+    local flags = settings.share_textures == false and 'noshare' or nil
+    local ok, msg, retry_s = nui.start(flags)
+    if not ok then
+        retry.n = retry.n + 1
+        local wait = retry_s and (retry.n == 1 and retry_s or RETRY_AFTER[retry.n])
+        if wait then
+            if not retry.said then say(tostring(msg) .. '; retrying', 167) retry.said = true end
+            retry.at = os.clock() + wait
+        elseif retry_s then
+            retry.at, retry.said = nil, false
+            say(tostring(msg) .. '; gave up (//' .. ident.short .. ' show tries again)', 167)
+        else
+            retry.at, retry.said = nil, false
+            say(tostring(msg), 167)
+        end
+        return false
+    end
+    if retry.said then say('hooked') end
+    retry.at, retry.said, retry.n = nil, false, 0
+    retry.flags = flags
+    ops.set_metrics(nui.N.metrics())
+    if settings.wintype and settings.wintype > 0 then nui.pin_type(settings.wintype) else nui.pin_type(nil) end
+    win = Window.new(nui.N, {app = app, on_place = save_place})
+    app.win = win
+    place_window()
+    pages.attach(app, win, nui.N, HERE)
+    win.collapsed = settings.collapsed_on_load == true
+    show_screen(0)
+    return true
+end
+
+local function show()
+    retry.show = true
+    if not start() then return end
+    win:show()
+end
+local function hide()
+    retry.show = false
+    if win then win:hide() end
+end
+local function toggle()
+    if win and win.visible then hide() else show() end
+end
+app.on_hide = hide
+
+-- textures: area emblems and the trophy, loaded once and kept (64 px: 16 KB each)
+local tex_cache = {}
+function app:tex(name)
+    if tex_cache[name] ~= nil then return tex_cache[name] or nil end
+    tex_cache[name] = false
+    if not nui.N or not nui.running then return nil end
+    for _, ext in ipairs({'.png', '.PNG', '.jpg'}) do
+        local h, w, hh = nui.N.tex_load(HERE .. 'assets/' .. name .. ext, 64, 64)
+        if h then
+            tex_cache[name] = {h = h, w = w, h_px = hh}
+            return tex_cache[name]
+        end
+    end
+    return nil
+end
+
+-- the Settings screen's actions
+local SCALES = {'one', 'ui', 'sim'}
+app.prefs = {
+    wintype = function()
+        if not settings.wintype or settings.wintype == 0 then return 'Auto (' .. nui.wt.type .. ')' end
+        return tostring(settings.wintype)
+    end,
+    scale_name = function()
+        local m = settings.scale_mode or 'one'
+        if m == 'sim' then return ('Sim %dx%d'):format(settings.sim_w, settings.sim_h) end
+        return ({one = 'One', ui = 'Game UI'})[m] or m
+    end,
+    change = function(key, step)
+        if key == 'visible_on_load' or key == 'show_uncompletable' then
+            settings[key] = not settings[key]
+            if key == 'show_uncompletable' then data.set_show_uncompletable(settings[key]) end
+        elseif key == 'size' then
+            settings.size = math.max(0.5, math.min(3, math.floor(((settings.size or 1) + 0.1 * (step or 1)) * 10 + 0.5) / 10))
+            apply_view()
+            place_window()
+        elseif key == 'scale' then
+            local i = 1
+            for n, m in ipairs(SCALES) do if m == settings.scale_mode then i = n end end
+            settings.scale_mode = SCALES[i % #SCALES + 1]
+            apply_view()
+            place_window()
+        elseif key == 'wintype' then
+            settings.wintype = ((settings.wintype or 0) + 1) % 9
+            if settings.wintype == 0 then nui.pin_type(nil) else nui.pin_type(settings.wintype) end
+        elseif key == 'reset' then
+            win.x, win.y, win.w, win.h = 200, 150, 620, 760
+            place_window()
+            win.x, win.y = 200, 150
+            save_place()
+        end
+        save()
+    end,
 }
-
----------------------------------------------------------------------------
--- Save current UI state to settings
----------------------------------------------------------------------------
-local function save_settings()
-    if ui.panel then
-        local x, y = ui.panel:get_pos()
-        settings.pos.x = x
-        settings.pos.y = y
-    end
-    settings:save()
-end
-
----------------------------------------------------------------------------
--- UI construction — builds panel and initializes view system
----------------------------------------------------------------------------
-local function build_ui()
-    -- Preserve position across rebuilds; use settings as default
-    local saved_x = settings.pos.x
-    local saved_y = settings.pos.y
-    local saved_view_state = nil
-    local was_collapsed = settings.collapsed_on_load
-
-    if ui.panel then
-        saved_x, saved_y = ui.panel:get_pos()
-        saved_view_state = views.get_state()
-        was_collapsed = ui.panel:is_collapsed()
-        ui.panel:destroy()
-        ui.panel = nil
-    end
-
-    -- Create the main panel
-    ui.panel = widgets.Panel({
-        x = saved_x,
-        y = saved_y,
-        width = theme.window_width,
-        height = 200,
-        title = 'Chronicle',
-        title_font = theme.font_headline,
-        title_size = theme.title_size,
-        collapsed = was_collapsed,
-        on_close = function()
-            ui.visible = false
-            save_settings()
-        end,
-        on_move = function()
-            save_settings()
-        end,
-    })
-
-    -- Initialize the view system
-    views.init(ui.panel, function()
-        ui.visible = false
-        save_settings()
-    end)
-    views.set_settings(settings)
-
-    -- Restore previous view state if rebuilding
-    if saved_view_state then
-        views.restore_state(saved_view_state)
-    end
-
-    -- Render the current view
-    views.render()
-end
-
----------------------------------------------------------------------------
--- UI show/hide/toggle
----------------------------------------------------------------------------
-local function show_ui()
-    if not ui.panel then
-        build_ui()
-    end
-    ui.panel:show()
-    ui.visible = true
-end
-
-local function hide_ui()
-    if ui.panel then
-        save_settings()
-        ui.panel:hide()
-    end
-    ui.visible = false
-end
-
-local function toggle_ui()
-    if ui.visible then
-        hide_ui()
-    else
-        show_ui()
-    end
-end
-
-local function reset_ui()
-    if ui.panel then
-        ui.panel:pos(200, 150)
-        settings.pos.x = 200
-        settings.pos.y = 150
-        settings:save()
-        windower.add_to_chat(207, 'Chronicle: Window position reset.')
-    end
-end
-
-local function refresh_ui()
-    if ui.panel and ui.visible then
-        build_ui()
-        ui.panel:show()
-    end
-end
 
 ---------------------------------------------------------------------------
 -- Events
 ---------------------------------------------------------------------------
+-- input is taken only while the module draws (review LIFE-4: an invisible window must not swallow clicks); nui.drawing is read
+-- from the DLL once a second in prerender, never here
+windower.register_event('mouse', function(t, x, y, delta, blocked)
+    if not win or not win.visible or not nui.drawing then return end
+    local f = nui.view.f
+    if win:mouse(t, x / f, y / f, delta, blocked) then return true end
+end)
 
--- Keyboard event — delegate to widgets for TextInput focus handling
 windower.register_event('keyboard', function(dik, down, flags, blocked)
-    return widgets.handle_keyboard(dik, down, flags, blocked)
+    local ch = keys.char(dik, down)
+    if win and (nui.drawing or not down) and win:key(dik, down, ch) then return true end
 end)
 
--- Prerender — tick text input cursor blink
+-- a Shift released while the game had no focus never sent its key-up (review UI-7)
+windower.register_event('lose focus', keys.reset)
+windower.register_event('gain focus', keys.reset)
+
+-- the restyle after a change of the game's window type (made once, not a closure every pass)
+local function restyled()
+    win:resend()            -- every layer sent again (the DLL rebuilds them too)
+    if win.visible then win:flush() end
+    pages.restyle()
+end
+
 windower.register_event('prerender', function()
-    widgets.tick_inputs()
-end)
-
--- Handle incoming story log packets
--- Track whether a refresh is already scheduled to avoid spamming rebuilds
-local refresh_scheduled = false
-local guide_refresh_scheduled = false
-
-windower.register_event('incoming chunk', function(id, original)
-    -- Key Item Log update — refresh requirements checklist
-    if id == 0x055 then
-        views.refresh_guide()
+    if not win then
+        if retry.at and os.clock() >= retry.at then
+            retry.at = nil
+            if start(true) and retry.show then win:show() end
+        end
         return
     end
+    local now = os.clock()
+    nui.poll_drawing(now)
+    win:tick(now)
+    nui.tick(now, restyled)
+    pages.tick(now)
+end)
 
+local refresh_due, reqs_due = nil, nil
+local function refresh()
+    progress.on_log()
+    if win and win.visible then
+        win:invalidate('all')
+        win:flush()
+    end
+end
+
+-- what shows step progress (a page, Home, an area list) redraws when a step's evidence arrives
+progress.on_change = function()
+    local v = app.view.name
+    if win and win.visible and (v == 'guide' or v == 'home' or v == 'area') then win:invalidate('all') win:flush() end
+end
+
+windower.register_event('incoming chunk', function(id, original)
+    if id == 0x032 or id == 0x034 then
+        local info = windower.ffxi.get_info()
+        progress.on_event(id, original, info and info.zone)
+        return
+    end
+    if id == 0x00A then
+        progress.on_zonein(original)
+        return
+    end
+    if id == 0x055 then
+        progress.on_0x055(original)
+        app:requirements_changed()
+        if win and win.visible and app.view.name == 'guide' then win:invalidate('content') win:flush() end
+        return
+    end
     if id ~= 0x056 then return end
-
-    local ok, err = pcall(function()
-        local p = packets.parse('incoming', original)
-        data.parse_packet(p)
-    end)
-    if not ok then
-        windower.add_to_chat(167, 'Chronicle: Packet parse error: ' .. tostring(err))
-    end
-
-    -- Schedule a UI refresh after packets finish arriving (they come in bursts)
-    if not refresh_scheduled then
-        refresh_scheduled = true
-        coroutine.schedule(function()
-            refresh_scheduled = false
-            refresh_ui()
-        end, 2)
+    local ok, err = pcall(function() data.parse_packet(packets.parse('incoming', original)) end)
+    if not ok then say('packet parse error: ' .. tostring(err), 167) end
+    -- the log arrives in a burst: redraw once, 2 s after the first
+    if not refresh_due then
+        refresh_due = true
+        coroutine.schedule(function() refresh_due = nil refresh() end, 2)
     end
 end)
 
--- Handle item changes — refresh requirements checklist (debounced like packet handler)
+-- the chat mode lets progress skip lines no step pattern can match (review CORE-7)
+windower.register_event('incoming text', function(original, modified, mode)
+    progress.on_text(original, mode)
+end)
+
+windower.register_event('remove item', function(bag, index, id, count)
+    progress.on_item(id, -(count or 1))
+end)
+
 windower.register_event('add item', function(bag, index, id, count)
-    if not guide_refresh_scheduled then
-        guide_refresh_scheduled = true
-        coroutine.schedule(function()
-            guide_refresh_scheduled = false
-            views.refresh_guide()
-        end, 1)
-    end
+    progress.on_item(id, count or 1)
+    if reqs_due then return end
+    reqs_due = true
+    coroutine.schedule(function()
+        reqs_due = nil
+        app:requirements_changed()
+        if win and win.visible and app.view.name == 'guide' then win:invalidate('content') win:flush() end
+    end, 1)
 end)
 
--- Handle zone change
-windower.register_event('zone change', function(new_id, old_id)
-    data.on_zone_change()
-    -- UI refresh happens automatically via incoming chunk handler above
-end)
+windower.register_event('zone change', function() data.on_zone_change() end)
 
--- Handle login/logout
 windower.register_event('login', function(name)
     data.on_login(name)
-    config.reload(settings)
-    theme.set_scale(settings.scale)
+    progress.on_login(name)
+    -- the new character's settings (review LIFE-6: a settings.xml that failed to load is tried again)
+    if settings_ok then
+        if not pcall(config.reload, settings) then say('data/settings.xml unreadable, settings kept', 167) end
+    elseif load_settings() then
+        app.settings = settings
+    end
     data.set_show_uncompletable(settings.show_uncompletable)
-
-    -- A panel built before login sits at the global position and scale;
-    -- rebuild it from this character's settings
-    if ui.panel then
-        ui.panel:destroy()
-        ui.panel = nil
-        ui.visible = false
-    end
-    if settings.visible_on_load then
-        show_ui()
+    if win then
+        -- review LIFE-9: the new character's window type pin; texture sharing is chosen at start, so a change waits for a reload
+        local wt = nui.wt.type
+        if settings.wintype and settings.wintype > 0 then nui.pin_type(settings.wintype) else nui.pin_type(nil) end
+        if nui.wt.type ~= wt then win:resend() pages.restyle() end
+        local flags = settings.share_textures == false and 'noshare' or nil
+        if flags ~= retry.flags then say('texture sharing ' .. (flags and 'off' or 'on') .. ' after a reload', 167) end
+        apply_view()
+        place_window()
+        win.collapsed = settings.collapsed_on_load == true
+        app:home()
+        if settings.visible_on_load then show() else hide() end
+    elseif settings.visible_on_load then
+        show()
     end
 end)
 
-windower.register_event('logout', function(name)
-    save_settings()
+windower.register_event('logout', function()
+    progress.flush()
+    save_place()
     data.on_logout()
-    if ui.panel then
-        ui.panel:destroy()
-        ui.panel = nil
-    end
-    ui.visible = false
+    meta.release()
+    hide()
 end)
 
--- Cleanup on addon unload
+-- The native side stops first (review HOST-2): stop() leaves UiHook and waits until the render thread is out of the DLL. Were
+-- it last, an error in a save below would skip it, and Windower would free the DLL while the game may still be drawing with it.
+-- The saves are guarded so one failing does not skip the others.
 windower.register_event('unload', function()
-    save_settings()
-    widgets.cleanup()
+    if nui.N then pcall(nui.stop) end
+    pcall(progress.flush)
+    pcall(save_place)
+    pcall(pages.close)
 end)
 
--- Command handler
+---------------------------------------------------------------------------
+-- Commands
+---------------------------------------------------------------------------
+local function status()
+    if not nui.N then say('_chronicle.dll did not load: ' .. tostring(nui.error), 167) return end
+    local s = nui.N.status()
+    say(('%s %s | %s | hook %s | clients %s, installs %s'):format(s.version, s.running and 'running' or 'stopped',
+        s.message, s.hook, tostring(s.clients), tostring(s.installs)))
+    say(('UiHook %s | driver rev %s'):format(tostring(s.describe), tostring(s.owner_rev)))
+    say(('draw %.0f us (max %.0f) | layers %d, %d quads, %d batches | build %.0f us | uploads %d'):format(
+        s.last_us, s.max_us, s.layers, s.quads, s.batches, s.build_us, s.uploads))
+    say(('textures %d KB, CPU pixels %d KB, vertices %d KB, pictures %d'):format(s.texture_kb, s.cpu_pixels_kb,
+        s.vertex_kb, s.pictures))
+    local c = s.cache
+    if c then
+        say(('texture cache %s | %d shared, %d own | %d entries, %d KB (%d KB unheld) | %s'):format(
+            c.shared and 'shared' or ('private (' .. tostring(c.why) .. ')'), c.shared_textures, c.private_textures,
+            c.live_entries, c.live_kb, c.unheld_kb, table.concat(c.clients or {}, ', ')))
+    end
+    collectgarbage()
+    local n, idx = meta.resident()
+    say(('Lua heap %d KB | areas resident %d%s | %s'):format(collectgarbage('count'), n, idx and ' + index' or '',
+        pages.status()))
+    local gt, src = nui.N.wtread()
+    say(('window type %d (%s) | game %s (%s) | UI size %s | screen %dx%d px, view x%.3f (%s, size %.1f)'):format(
+        nui.wt.type, nui.wt.follow and 'auto' or 'pinned', tostring(gt), src or 'not found',
+        s.ui_found and (s.ui_w .. 'x' .. s.ui_h) or 'not found', s.rt_w, s.rt_h, nui.view.f, nui.view.mode, nui.view.size))
+    if win then
+        local st = win.stats
+        say(('window %dx%d at %d,%d | sent chrome %d content %d overlay %d, %d unchanged not sent | last layout %.1f ms'):format(
+            win.w, win.h, win.x, win.y, st.sent[1], st.sent[2], st.sent[3], st.skipped, st.content_ms))
+    end
+end
+
+local HELP = {
+    '  //%s              toggle the window',
+    '  //%s show | hide  show or hide',
+    '  //%s compact      collapse or expand',
+    '  //%s reset        reset place and size',
+    '  //%s refresh      redraw with current data',
+    '  //%s home         back to Home',
+    '  //%s autoshow     toggle showing on load',
+    '  //%s size [+|-|n|reset]   the window size (0.5 - 3.0)',
+    '  //%s scale one | ui | sim <w> <h> | auto | off',
+    '  //%s wintype auto | 1-8',
+    '  //%s uncompletable   toggle uncompletable quests',
+    '  //%s q [area] | m [area]   summaries in chat',
+    '  //%s progress [log | debug]   quest step progress',
+    '  //%s unknown | debug | status | help',
+}
+
 windower.register_event('addon command', function(...)
     local args = {...}
     local cmd = args[1] and args[1]:lower() or 'toggle'
-
-    if cmd == 'toggle' or cmd == '' then
-        toggle_ui()
-    elseif cmd == 'show' then
-        show_ui()
-    elseif cmd == 'hide' then
-        hide_ui()
-    elseif cmd == 'reset' then
-        reset_ui()
-    elseif cmd == 'compact' then
-        if ui.panel then
-            ui.panel:toggle_collapse()
-        end
-    elseif cmd == 'refresh' then
-        build_ui()
-        show_ui()
-        windower.add_to_chat(207, 'Chronicle: UI refreshed.')
-    elseif cmd == 'home' then
-        views.go_home()
+    local a, b, c = args[2] and args[2]:lower(), args[3], args[4]
+    if cmd == 'toggle' or cmd == '' then toggle()
+    elseif cmd == 'show' then show()
+    elseif cmd == 'hide' then hide()
+    elseif cmd == 'compact' then if win then win:toggle_collapse() end
+    elseif cmd == 'reset' then if start() then app.prefs.change('reset') win:invalidate('all') win:flush() end
+    elseif cmd == 'refresh' then refresh()
+    elseif cmd == 'home' then app:home()
     elseif cmd == 'autoshow' then
         settings.visible_on_load = not settings.visible_on_load
-        settings:save()
-        windower.add_to_chat(207, 'Chronicle: Auto-show on load: ' .. (settings.visible_on_load and 'ON' or 'OFF'))
+        save()
+        say('show on load ' .. (settings.visible_on_load and 'on' or 'off'))
     elseif cmd == 'q' or cmd == 'quests' then
-        local area = args[2] and args[2]:lower() or nil
-        if area then
-            data.print_area('quest', area)
-        else
-            data.print_type_summary('quest')
-        end
+        if a then data.print_area('quest', a) else data.print_type_summary('quest') end
     elseif cmd == 'm' or cmd == 'missions' then
-        local area = args[2] and args[2]:lower() or nil
-        if area then
-            data.print_area('mission', area)
-        else
-            data.print_type_summary('mission')
-        end
+        if a then data.print_area('mission', a) else data.print_type_summary('mission') end
     elseif cmd == 'size' then
-        local param = args[2] and args[2]:lower() or nil
-        if not param then
-            -- Report current size
-            windower.add_to_chat(207, string.format('Chronicle: UI scale = %.2f', theme.scale))
-        else
-            local new_scale
-            if param == '+' or param == 'up' then
-                new_scale = theme.scale + 0.1
-            elseif param == '-' or param == 'down' then
-                new_scale = theme.scale - 0.1
-            elseif param == 'reset' then
-                new_scale = 1.0
-            else
-                new_scale = tonumber(param)
-                if not new_scale then
-                    windower.add_to_chat(167, 'Chronicle: Invalid size value. Use a number, +, -, or reset.')
-                    return
-                end
-            end
-            theme.set_scale(new_scale)
-            settings.scale = theme.scale
-            settings:save()
-            windower.add_to_chat(207, string.format('Chronicle: UI scale set to %.2f', theme.scale))
-            -- Rebuild UI at new scale
-            if ui.panel and ui.visible then
-                build_ui()
-                ui.panel:show()
-            end
+        if not a then say(('size %.1f'):format(settings.size or 1)) return end
+        local v
+        if a == '+' or a == 'up' then v = (settings.size or 1) + 0.1
+        elseif a == '-' or a == 'down' then v = (settings.size or 1) - 0.1
+        elseif a == 'reset' then v = 1
+        else v = tonumber(a) end
+        if not v then say('size + | - | <0.5-3> | reset', 167) return end
+        settings.size = math.max(0.5, math.min(3, math.floor(v * 10 + 0.5) / 10))
+        save()
+        apply_view()
+        if win then place_window() win:flush() end
+        say(('size %.1f'):format(settings.size))
+    elseif cmd == 'scale' then
+        if a == 'sim' then
+            local w, h = tonumber(b), tonumber(c)
+            if not (w and h and w >= 640 and h >= 480) then say('scale sim <w> <h>, e.g. 2560 1440', 167) return end
+            settings.sim_w, settings.sim_h = w, h
+        elseif a == 'auto' or a == 'off' then
+            settings.rt_auto = a == 'auto'
+        elseif not (a == 'one' or a == 'ui') then
+            say('scale one | ui | sim <w> <h> | auto | off', 167) return
         end
+        if a ~= 'auto' and a ~= 'off' then settings.scale_mode = a end
+        save()
+        apply_view()
+        if win then place_window() win:flush() end
+        local sw, sh = nui.screen()
+        say(('scale %s: view x%.3f, the window sees a %dx%d screen'):format(a, nui.view.f, sw, sh))
+    elseif cmd == 'wintype' then
+        local n = tonumber(a)
+        if a == 'auto' then
+            settings.wintype = 0
+            local ok, why = nui.pin_type(nil)
+            if not ok and why then say(why, 167) end
+        elseif n and n >= 1 and n <= 8 then
+            settings.wintype = n
+            nui.pin_type(n)
+        else
+            say('wintype auto | 1-8', 167) return
+        end
+        save()
+        if win then win:resend() win:flush() pages.restyle() end
+        say('window type ' .. nui.wt.type .. (settings.wintype == 0 and ' (follows the game)' or ''))
     elseif cmd == 'uncompletable' then
         settings.show_uncompletable = not settings.show_uncompletable
         data.set_show_uncompletable(settings.show_uncompletable)
-        settings:save()
-        windower.add_to_chat(207, 'Chronicle: Show uncompletable quests: ' .. (settings.show_uncompletable and 'ON' or 'OFF'))
-        refresh_ui()
-    elseif cmd == 'debug' then
-        data.toggle_debug()
-    elseif cmd == 'unknown' then
-        data.print_unknown_ids()
+        save()
+        say('uncompletable ' .. (settings.show_uncompletable and 'shown' or 'hidden'))
+        refresh()
+    elseif cmd == 'progress' then
+        if a == 'log' then progress.recent(tonumber(b) or 10)
+        elseif a == 'debug' then
+            progress.debug = not progress.debug
+            say('progress: each observation in chat ' .. (progress.debug and 'on' or 'off'))
+        else
+            for _, key in ipairs(progress.keys()) do say('progress ' .. key .. ':') progress.report(key) end
+        end
+    elseif cmd == 'debug' then data.toggle_debug()
+    elseif cmd == 'unknown' then data.print_unknown_ids()
+    elseif cmd == 'status' then status()
     elseif cmd == 'help' then
-        windower.add_to_chat(207, 'Chronicle commands:')
-        windower.add_to_chat(207, '  //cr              - Toggle UI window')
-        windower.add_to_chat(207, '  //cr show/hide    - Show or hide window')
-        windower.add_to_chat(207, '  //cr compact      - Toggle collapsed/expanded')
-        windower.add_to_chat(207, '  //cr reset        - Reset window position')
-        windower.add_to_chat(207, '  //cr refresh      - Rebuild UI with current data')
-        windower.add_to_chat(207, '  //cr home         - Navigate to top-level view')
-        windower.add_to_chat(207, '  //cr autoshow     - Toggle auto-show on load')
-        windower.add_to_chat(207, '  //cr size             - Report current UI scale')
-        windower.add_to_chat(207, '  //cr size +/-         - Increase/decrease UI scale by 0.1')
-        windower.add_to_chat(207, '  //cr size <number>    - Set UI scale (0.5 - 3.0)')
-        windower.add_to_chat(207, '  //cr size reset       - Reset UI scale to 1.0')
-        windower.add_to_chat(207, '  //cr uncompletable    - Toggle uncompletable quests visibility')
-        windower.add_to_chat(207, '  //cr unknown      - List unknown quest/mission IDs')
-        windower.add_to_chat(207, '  //cr q [area]     - Show quest summary / area detail (chat)')
-        windower.add_to_chat(207, '  //cr m [area]     - Show mission summary / area detail (chat)')
-        windower.add_to_chat(207, '  //cr debug        - Toggle debug logging')
-        windower.add_to_chat(207, '  //cr help         - Show this help')
+        say('commands:')
+        for _, l in ipairs(HELP) do windower.add_to_chat(207, l:format(ident.short)) end
     else
-        windower.add_to_chat(167, 'Chronicle: Unknown command "'..cmd..'". Use //cr help')
+        say(('unknown command "%s"; //%s help'):format(cmd, ident.short), 167)
     end
 end)
 
--- Auto-show on load if configured
-if settings.visible_on_load then
-    show_ui()
-end
+-- the tests' handle on the app (test/harness.lua sets CHRONICLE_TEST before loading)
+if rawget(_G, 'CHRONICLE_TEST') then CHRONICLE_TEST.app = app end
 
-windower.add_to_chat(207, 'Chronicle v' .. _addon.version .. ' loaded. Use //cr to toggle UI. Zone to load data.')
+-- shown at load only in game (review LIFE-7: an addon loaded at the title screen waits for the login event)
+do
+    local info = windower.ffxi.get_info()
+    if settings.visible_on_load and info and info.logged_in then show() end
+end
+say(('v%s loaded. //%s to toggle. Zone to load data.'):format(_addon.version, ident.short))

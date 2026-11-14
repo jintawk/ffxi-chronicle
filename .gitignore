@@ -1,2 +1,6 @@
 data/
 tools/
+plugin/out/
+docs/
+CHECKLIST.md
+libs/*.new.dll

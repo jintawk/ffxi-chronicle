@@ -1,170 +1,205 @@
 # Chronicle
 
-A visual quest and mission tracker for Final Fantasy XI. Chronicle shows your completion progress across all quest areas and mission storylines, lets you browse entries with search and filters, and provides detailed guides with live inventory checking — all inside an interactive, clickable UI.
+A quest and mission tracker for Final Fantasy XI, drawn in the game's own windows.
 
-![Chronicle overview](screenshots/home.png)
+Chronicle shows your completion across every quest area and mission storyline, lets you browse and
+search them, checks your bags for what a quest needs, and shows the walkthrough from BG-wiki with
+its headings, links, maps and tabs intact.
+
+![Chronicle's home screen](media/home.png)
+
+Version 2 replaces version 1's Windower text boxes with a native drawing layer. The window frame,
+the fonts, the gauges and the item icons are read out of the game's own files and drawn above the
+game's interface, in whichever of the eight window styles you have set in the game's Config.
+
+- [Features](#features)
+- [Installation](#installation)
+- [Using it](#using-it)
+- [Commands](#commands)
+- [What is tracked](#what-is-tracked)
+- [Walkthroughs](#walkthroughs)
+- [Pictures and credits](#pictures-and-credits)
+- [The native layer](#the-native-layer)
+- [Upgrading from version 1](#upgrading-from-version-1)
+- [Licence](#licence)
 
 ## Features
 
-- **Track quest completion** across all 11 quest areas with progress bars and percentages
-- **Track mission completion** across 15 mission storylines (nation missions, expansion storylines, add-on scenarios, Assault, and Campaign)
-- **Tabbed home view** — switch between Mission and Quest tabs to see overall progress for each category
-- **Search and filter** entries by name, completion status, or sort order
-- **Detailed guides** with start NPC, zone, rewards, fame requirements, and step-by-step walkthroughs
-- **Live requirements checking** — see which items and key items you already own and which you still need
-- **Quest/mission chain navigation** — click through Previous/Next links to follow multi-part chains
-- **Scalable UI** — resize from 0.5x to 3.0x to suit your screen
-- **Draggable and collapsible** window with per-character saved positions
+- Completion for 11 quest areas and 15 mission storylines, read from the game's own quest log
+- A home screen with Missions and Quests tabs, overall completion, a card per area, and what is in
+  progress with the next step of each
+- Area lists with search, four sort orders and five filters; an active entry shows its next step
+  and how far through it you are
+- Guide details per entry: status, description, starting NPC and zone, reward, fame, title, and the
+  previous and next entries in the chain
+- Requirements checked against every bag and your key items, with the items' own icons
+- 1,916 walkthrough pages converted from BG-wiki, with headings, lists, coloured links, item icons,
+  boss tables, maps and tabbed panels
+- The game's window art in any of its eight window styles, following the game's Config
+- Drag to move, drag an edge or the corner to resize, with the text re-wrapping and your place kept
+- Window place and size saved per character and per screen size
 
 ## Installation
 
-Copy the `chronicle` folder into your `Windower/addons/` directory, then load it in-game:
+Copy the `chronicle` folder into `Windower/addons/` and load it:
 
 ```
 //lua load chronicle
 ```
 
-To autoload on every login, add the line above to your `scripts/init.txt` file.
+`libs/_chronicle.dll` is the native drawing layer: 32-bit, built from `plugin/`. If it cannot draw,
+because it did not load or because a game update moved the code it looks for, Chronicle says so in
+the chat log and then stays out of the way. It draws nothing and takes no input.
 
-## Usage
+The DLL needs the Universal C Runtime, which Windows 10 and 11 include. On Windows 7 or 8.1,
+install update KB2999226 first or the DLL will not load.
 
-Toggle the window with:
+To build the DLL yourself rather than use the one in the repository:
 
+```sh
+sh plugin/build.sh
 ```
-//cr
-```
 
-### Navigation
+It needs MinGW-w64 i686 and nothing else. The drawing library is
+[nui](https://github.com/jintawk/nui), vendored in `plugin/nui`.
 
-Chronicle uses a drill-down layout with three views. A breadcrumb bar at the top of the window lets you navigate back at any time.
+## Using it
 
-#### Home View
+`//cr` shows or hides the window. Click a card, a row or a link to go in; click a breadcrumb, or
+right-click anywhere in the window, to go back. Hovering a link shows where it goes. The three
+buttons at the top right open Settings, collapse the window, and hide it.
 
-The home screen has two tabs — **Missions** and **Quests** — letting you switch between the two categories. Each tab shows your overall completion and a grid of area cards. Each card displays the area name, number of completed entries, completion percentage, and a colour-coded progress bar. Click any card to drill into that area.
+![An area list, sorted by status](media/area-list.png)
 
-![Home view with area cards](screenshots/home_quests.png)
+Completion appears when you zone or complete an objective, because that is when the game sends the
+quest log. Nothing is sent to the server, and no packet is injected: Chronicle only reads.
 
-#### Area View
+### Resizing
 
-The area view lists every quest or mission in the selected area. Each row shows the entry name, start NPC (for quests), and a status indicator. A toolbar at the top provides:
+![Dragging the corner while the text re-wraps](media/resize.gif)
 
-- **Search** — type to filter by name in real time
-- **Sort** — order by Default (game ID), Name (alphabetical), or Status (active first)
-- **Show** — filter to All, Completed, or Todo
+The paragraphs re-wrap as the window changes width, and your reading position is kept rather than
+jumping to the top.
 
-Click any row to open its guide.
+### Scrolling
 
-![Area view with quest list, search, and filters](screenshots/area_view.png)
-
-#### Guide View
-
-The guide view shows everything you need to complete a quest or mission:
-
-- **Status badge** — Completed, Active, Not Started, or Repeatable
-- **Metadata** — Start NPC, zone with coordinates, reward, fame requirement, title, and repeatable status
-- **Requirements checklist** — items and key items needed, with live OWNED/MISSING status pulled from your inventory, satchel, sack, case, wardrobe, safe, storage, and temporary items
-- **Chain links** — clickable Previous and Next links to follow multi-part quest chains or mission storylines
-- **Walkthrough** — step-by-step guide text (sourced from BG Wiki)
-- **Notes** — additional tips where available
-
-![Guide view with requirements and walkthrough](screenshots/guide_view.png)
+![A long page scrolling](media/scroll.gif)
 
 ## Commands
 
-| Command | Description |
+| Command | What it does |
 |---|---|
-| `//cr` | Toggle the window |
-| `//cr show` | Show the window |
-| `//cr hide` | Hide the window |
-| `//cr compact` | Toggle collapsed/expanded mode |
-| `//cr home` | Navigate to the home view |
-| `//cr reset` | Reset window position to default |
-| `//cr refresh` | Rebuild the UI with current data |
-| `//cr size` | Show current UI scale |
-| `//cr size +` / `//cr size -` | Increase or decrease scale by 0.1 |
-| `//cr size <number>` | Set scale directly (0.5 to 3.0) |
-| `//cr size reset` | Reset scale to 1.0 |
-| `//cr autoshow` | Toggle auto-show on login |
-| `//cr uncompletable` | Toggle visibility of quests that can no longer be completed |
-| `//cr q` | Print quest summary to chat |
-| `//cr q <area>` | Print quest detail for an area to chat |
-| `//cr m` | Print mission summary to chat |
-| `//cr m <area>` | Print mission detail for an area to chat |
-| `//cr help` | Show help text in chat |
+| `//cr` | Show or hide the window |
+| `//cr show` / `hide` | Show or hide |
+| `//cr compact` | Collapse or expand |
+| `//cr reset` | Reset the window's place and size |
+| `//cr refresh` | Redraw with the current data |
+| `//cr home` | Back to the home screen |
+| `//cr autoshow` | Show on load, on or off |
+| `//cr size [+ \| - \| 0.5-3 \| reset]` | Window size |
+| `//cr scale one \| ui \| sim <w> <h> \| auto \| off` | Draw scale: 1:1, the game's UI size, or a simulated screen |
+| `//cr wintype auto \| 1-8` | Follow the game's window style, or pin one |
+| `//cr uncompletable` | Show quests that can no longer be done |
+| `//cr q [area]` / `m [area]` | Summaries in the chat log |
+| `//cr status` | Drawing, memory and hook details |
+| `//cr progress` / `unknown` / `debug` / `help` | Diagnostics and help |
 
-## Settings
+Every command is also a setting on the Settings screen.
 
-Settings are saved per-character and persist between sessions. The following are stored automatically:
+## What is tracked
 
-- **Window position** — drag the title bar to reposition
-- **UI scale** — adjusted via `//cr size`
-- **Sort and filter modes** — last-used sort order and show filter
-- **Active tab** — whether the home view defaults to Missions or Quests
-- **Visibility and collapse state** — whether the window is shown and/or collapsed on load
-- **Show uncompletable** — whether quests that can no longer be completed are visible and counted
+Two different things are tracked, and it is worth being clear about the difference.
 
-Settings are stored in `addons/chronicle/data/settings.xml`.
+**Completion** is tracked for everything: all 11 quest areas and all 15 mission storylines. If you
+have done it, Chronicle knows.
 
-## Quest Areas
+**Steps within an entry** are tracked for about half of the pages: 940 of 1,916. An entry with step
+tracking shows how far through it you are, the next thing to do, and a progress strip. An entry
+without it still shows its status, its guide card and its full walkthrough; it just has no
+checkboxes and no next-step line.
 
-Chronicle covers all 11 quest regions in FFXI:
+These areas currently show completion only:
 
-- San d'Oria
-- Bastok
-- Windurst
-- Jeuno
-- Other Areas
-- Outlands
-- Aht Urhgan (Treasures of Aht Urhgan)
-- Crystal War (Wings of the Goddess)
-- Abyssea
-- Adoulin (Seekers of Adoulin)
-- Coalition
+| Area | Mapped |
+|---|---|
+| Campaign Operations | 0 of 246 |
+| Coalition | 0 of 95 |
+| Assault | 0 of 52 |
+| Abyssea | 6 of 192 |
+| Crystal War | 12 of 93 |
+| Rhapsodies of Vana'diel | 28 of 93 |
+| The Voracious Resurgence | 18 of 45 |
 
-## Mission Storylines
+Sixty-three entries can never have step tracking, because the game gives no signal between starting
+them and finishing them.
 
-Chronicle tracks 15 mission categories:
+## Walkthroughs
 
-- San d'Oria Missions
-- Bastok Missions
-- Windurst Missions
-- Rise of the Zilart
-- Chains of Promathia
-- Treasures of Aht Urhgan
-- Wings of the Goddess
-- A Crystalline Prophecy
-- A Moogle Kupo d'Etat
-- A Shantotto Ascension
-- Seekers of Adoulin
-- Rhapsodies of Vana'diel
-- The Voracious Resurgence
-- Assault
-- Campaign
+![A walkthrough page with its tab bar](media/walkthrough.png)
 
-## Technical Notes
+Each page keeps BG-wiki's structure: headings, nested lists, tables, and the coloured links for
+zones, NPCs, items and coordinates.
 
-### Mission Packet Parsing
+![The same page scrolled, with a sticky tab bar and a link tooltip](media/walkthrough-scrolled.png)
 
-Chronicle reads mission and quest state from incoming packet `0x056`, which the server sends on zone-in. Each sub-type carries data for a different quest region or mission storyline (see `libs/packets/fields.lua` for definitions).
+Pages with several routes through them, like Chains of Promathia's Three Paths, use real tabs.
+Switching tabs never moves the page; only the panel under the tabs changes, and each panel keeps
+its own place. Once the tabs scroll out of view a bar of them stays at the top.
 
-Most mission lines track completion via bitflag packets (one bit per mission), but several "linear" storylines — COP, SOA, ROV, ACP, MKD, ASA, and TVR — only send a "current mission" integer. Chronicle infers completion from this: every mission before the current one is marked completed.
+![Links, with a tooltip](media/links.png)
 
-### TVR (The Voracious Resurgence) High-Bit Flag
+Links to entries Chronicle knows about open inside Chronicle. Everything else opens BG-wiki in your
+browser.
 
-TVR mission state arrives in packet `0x056` sub-type `0xFFFE` as a signed 32-bit integer at offset `0x04`. Unlike other linear mission lines, TVR allows the player to have **no active mission** after completing one (you don't automatically start the next). The server encodes this using bit 31 of the integer:
+![A map, enlarged over the page](media/map.png)
 
-| Bit 31 | Meaning | Lower 31 bits |
-|---|---|---|
-| Clear (positive value) | Player has a mission in progress | Value near the active mission's DAT ID |
-| Set (negative as signed int) | Player has no active mission | Value near the next uncompleted mission's DAT ID |
+Click a map to enlarge it.
 
-When bit 31 is set, all missions with DAT IDs below the lower 31-bit value are completed. For example, a raw packet value of `0x800001CC` (lower bits = 460) means missions through "Koru-Moru's Hypothesis" (DAT ID 452) are completed and "Altennia Burns Bright" (DAT ID 460) has not been started.
+![A quest's requirements, with item icons](media/requirements.png)
 
-Note: the packet value does not exactly match DAT mission IDs in either case. Chronicle uses a fuzzy lookup (largest map ID <= packet value) to resolve the correct mission. The remaining 28 bytes in the `0xFFFE` packet (after the integer) are confirmed to be unused zeros.
+Requirements are checked against every bag and your key items, so a tick means you are actually
+carrying it.
 
-Other linear mission lines (COP, SOA, ROV, etc.) do not use this flag because their final missions stay permanently "active" once the storyline is complete — the player always has a current mission value > 0.
+## Pictures and credits
 
-## Credits
+Walkthrough text comes from [BG-wiki](https://www.bg-wiki.com) and is converted with every visible
+word kept. Pictures are not shipped: a page downloads each picture from BG-wiki the first time it
+shows it, and keeps it in `data/pics/`. Downloads use HTTPS, and BG-wiki's certificate is checked
+against the root certificates in `certs/cacert.pem`.
 
-- Quest data sourced from [BG Wiki](https://www.bg-wiki.com/), licensed under [CC BY-NC-SA 3.0](https://creativecommons.org/licenses/by-nc-sa/3.0/)
-- Built for [Windower 4](https://www.windower.net/)
+Credit for the walkthrough text and the pictures belongs to BG-wiki's contributors.
+
+Item icons, window art and fonts are read from your own game installation at run time, read only.
+None of them are shipped.
+
+## The native layer
+
+Drawing is done by [nui](https://github.com/jintawk/nui), a BSD-3 library compiled into
+`libs/_chronicle.dll`. It patches the game's `EndScene` wrapper to draw above the game's interface,
+sharing one patch and one texture cache with any other addon that uses it, so several such addons
+can run together whatever versions they were built against.
+
+If a game update moves the code it hooks, it patches nothing and draws nothing rather than guessing,
+and `//cr status` reports why.
+
+## Upgrading from version 1
+
+Version 2 reads version 1's settings. These carry over as they are: show on load, collapsed on load,
+sort order, filter, the active tab, and whether uncompletable quests are shown. Version 1's `scale`
+becomes `size`. Window position moves to `data/places.lua`, which records a place per character and
+per screen size, so the first run puts the window at its default and remembers where you move it.
+
+Version 1 is tagged [`v1.4.2`](https://github.com/jintawk/ffxi-chronicle/releases/tag/v1.4.2) if you
+want to go back to it.
+
+## Licence
+
+BSD 3-Clause.
+
+`certs/cacert.pem` is Mozilla's CA certificate list as extracted by the curl project
+(https://curl.se/docs/caextract.html), under the Mozilla Public License 2.0.
+
+`plugin/nui/stb_image.h` is Sean Barrett's stb_image, public domain / MIT.
+
+Final Fantasy XI is a trademark of Square Enix. This project is not affiliated with or endorsed by
+Square Enix.

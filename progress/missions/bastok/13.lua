@@ -1,0 +1,111 @@
+-- Step progress for Magicite (Bastok mission 4-1, mission id 13). Data only; see progress/missions/sandoria/0.lua for the format.
+-- Evidence: LandSandBoat scripts/missions/bastok/4_1_Magicite.lua; client event scripts S4 (Goggehn 243, Aldo and Muckvix 245).
+-- This is the rank-4 mission accepted at the Bastokan Embassy: door event 129 starts it (the script begins the mission on every
+-- answer but a cancel, so 129 also plays on a cancel and is only `reach`; the mission line moving to id 13 and the Archducal
+-- audience permit, key item 56 in res/key_items.lua, prove it; the permit may be owned already, the line then carries it).
+-- 65535 = no mission before; completing sets the line back to 65535 and adds id 13 to the completed set. Door 128 hands over the
+-- Letter to Aldo (22), Aldo 152 swaps it for the Silver bell (45), Muckvix 184 hands over the Yagudo torch (20; optional because
+-- the key items persist from another nation's run), door 60 takes the three Magicites (14 Optistone, 15 Aurastone, 16 Orastone)
+-- and Goggehn 35 completes the mission. Obtaining the three Magicites (bullet 6) is any order and may be done already, so it is
+-- a note on door 60; the guide bullets below are notes on the step they lead into. Door 128, 129 and 60 are not decoded in the
+-- client scripts (the door NPCs are not in the pseudo-code): their ids come from LandSandBoat.
+return {
+    title = 'Magicite',
+    completes = 's8',
+    known = {{t = 'mission', line = 'bastok', eq = 13}},
+    steps = {
+        {id = 's1', kind = 'note', with = 's2', at = {n = 1, fp = 'this mission is identical for all'}},
+        {id = 's2', at = {n = 2, fp = 'to flag the mission speak with'},
+         done = {
+            {t = 'ki', id = 56, gained = true, why = 'Archducal audience permit obtained'},
+            {t = 'mission', line = 'bastok', eq = 13, completed = false, why = 'mission line: current mission = Magicite'},
+         },
+         reach = {
+            {t = 'event', zone = 243, event = 129, why = 'Door: Bastokan Emb. 129 offered (it also plays when cancelled)'},
+         }},
+        {id = 's3', at = {n = 3, fp = 'click on the door to the'},
+         done = {
+            {t = 'event', zone = 243, event = 128, why = 'Door: Audience Chamber 128: the Letter to Aldo handed over'},
+            {t = 'ki', id = 22, gained = true, why = 'Letter to Aldo obtained'},
+            {t = 'chat', re = 'obtained key item: letter to aldo', why = 'chat: key item obtained'},
+         }},
+        {id = 's4', at = {n = 4, fp = 'speak to aldo in lower jeuno'},
+         done = {
+            {t = 'event', zone = 245, event = 152, why = 'Aldo 152: the Letter to Aldo taken, the Silver bell handed over'},
+            {t = 'ki', id = 22, gained = false, why = 'Letter to Aldo handed over'},
+         }},
+        {id = 's5', kind = 'optional', at = {n = 5, fp = 'speak to paya sabya in upper'},
+         done = {
+            {t = 'event', zone = 245, event = 184, why = 'Muckvix 184: the Yagudo torch handed over'},
+            {t = 'ki', id = 20, gained = true, why = 'Yagudo torch obtained'},
+            {t = 'chat', re = 'obtained key item: yagudo torch', why = 'chat: key item obtained'},
+         }},
+        {id = 's6', kind = 'note', with = 's7', at = {n = 6, fp = 'obtain the 3 magicite key items'}},
+        {id = 's7', at = {n = 7, fp = 'click the audience chamber in ru'},
+         done = {
+            {t = 'event', zone = 243, event = 60, why = 'Door: Audience Chamber 60: the three Magicites handed over'},
+            {t = 'ki', id = 14, gained = false, why = 'Magicite: Optistone handed over'},
+            {t = 'ki', id = 15, gained = false, why = 'Magicite: Aurastone handed over'},
+            {t = 'ki', id = 16, gained = false, why = 'Magicite: Orastone handed over'},
+         }},
+        {id = 's8', at = {n = 8, fp = 'return to goggehn in the bastokan'},
+         done = {
+            {t = 'mission', line = 'bastok', eq = 13, completed = true, why = 'mission log: Magicite completed'},
+            {t = 'event', zone = 243, event = 35, why = 'Goggehn 35: the mission completed'},
+            {t = 'chat', re = "No time for R&R, soldier! Your country needs you!", why = 'Goggehn 35 (say #10186)'},
+         }},
+        {id = 's9', kind = 'note', with = 's8', at = {n = 9, fp = 'gain access to the tenshodo by'}},
+        {id = 's10', kind = 'note', with = 's8', at = {n = 10, fp = 'examine the door at the end'}},
+        {id = 's11', kind = 'note', with = 's8', at = {n = 11, fp = 'once inside speak with aldo at'}},
+        {id = 's12', kind = 'note', with = 's8', at = {n = 12, fp = 'yagudo torch'}},
+        {id = 's13', kind = 'note', with = 's8', at = {n = 13, fp = 'coruscant rosary and black matinee necklace'}},
+        {id = 's14', kind = 'note', with = 's8', at = {n = 14, fp = 'crest of davoi'}},
+        {id = 's15', kind = 'note', with = 's8', at = {n = 15, fp = 'elesca northern san d oria i'}},
+        {id = 's16', kind = 'note', with = 's8', at = {n = 16, fp = 'violitte southern san d oria g'}},
+        {id = 's17', kind = 'note', with = 's8', at = {n = 17, fp = 'karine bastok markets h 9'}},
+        {id = 's18', kind = 'note', with = 's8', at = {n = 18, fp = 'rex port bastok j 7'}},
+        {id = 's19', kind = 'note', with = 's8', at = {n = 19, fp = 'mhoji roccoruh port windurst g 9'}},
+        {id = 's20', kind = 'note', with = 's8', at = {n = 20, fp = 'pehki machumaht windurst woods h 11'}},
+        {id = 's21', kind = 'note', with = 's8', at = {n = 21, fp = 'promurouve lower jeuno h 7'}},
+        {id = 's22', kind = 'note', with = 's8', at = {n = 22, fp = 'rusese upper jeuno h 6'}},
+        {id = 's23', kind = 'note', with = 's8', at = {n = 23, fp = 'mages will need echo drops for'}},
+        {id = 's24', kind = 'note', with = 's8', at = {n = 24, fp = 'everything in this area aggros sound'}},
+        {id = 's25', kind = 'note', with = 's8', at = {n = 25, fp = 'set your home point in jeuno'}},
+        {id = 's26', kind = 'note', with = 's8', at = {n = 26, fp = 'you will have to kill two'}},
+        {id = 's27', kind = 'note', with = 's8', at = {n = 27, fp = 'enter beadeaux from pashhow marshlands at'}},
+        {id = 's28', kind = 'note', with = 's8', at = {n = 28, fp = 'follow the left wall to a'}},
+        {id = 's29', kind = 'note', with = 's8', at = {n = 29, fp = 'inside follow the right wall until'}},
+        {id = 's30', kind = 'note', with = 's8', at = {n = 30, fp = 'head south after you have been'}},
+        {id = 's31', kind = 'note', with = 's8', at = {n = 31, fp = 'outside reapply silence at the mute'}},
+        {id = 's32', kind = 'note', with = 's8', at = {n = 32, fp = 'once you are on the upper'}},
+        {id = 's33', kind = 'note', with = 's8', at = {n = 33, fp = 'here you will find de vyu'}},
+        {id = 's34', kind = 'note', with = 's8', at = {n = 34, fp = 'now turn around and head northeast'}},
+        {id = 's35', kind = 'note', with = 's8', at = {n = 35, fp = 'follow the right wall now until'}},
+        {id = 's36', kind = 'note', with = 's8', at = {n = 36, fp = 'here you will find go bhu'}},
+        {id = 's37', kind = 'note', with = 's8', at = {n = 37, fp = 'head back to jeuno'}},
+        {id = 's38', kind = 'note', with = 's8', at = {n = 38, fp = 'trade both items to sattal mansal'}},
+        {id = 's39', kind = 'note', with = 's8', at = {n = 39, fp = 'make your way to davoi'}},
+        {id = 's40', kind = 'note', with = 's8', at = {n = 40, fp = 'once you re in davoi go'}},
+        {id = 's41', kind = 'note', with = 's8', at = {n = 41, fp = 'drop invisible and click on the'}},
+        {id = 's42', kind = 'note', with = 's8', at = {n = 42, fp = 'inside there will not be any'}},
+        {id = 's43', kind = 'note', with = 's8', at = {n = 43, fp = 'go back to upper jeuno trigger'}},
+        {id = 's44', kind = 'note', with = 's8', at = {n = 44, fp = 'go back to altar room for'}},
+        {id = 's45', kind = 'note', with = 's8', at = {n = 45, fp = 'seems that the yagudo torch portion'}},
+        {id = 's46', kind = 'note', with = 's8', at = {n = 46, fp = 'you will need both silent oils'}},
+        {id = 's47', kind = 'note', with = 's8', at = {n = 47, fp = 'there are areas of this zone'}},
+        {id = 's48', kind = 'note', with = 's8', at = {n = 48, fp = 'enter the castle and head to'}},
+        {id = 's49', kind = 'note', with = 's8', at = {n = 49, fp = 'proceed upstairs you ll be on'}},
+        {id = 's50', kind = 'note', with = 's8', at = {n = 50, fp = 'on this map head north without'}},
+        {id = 's51', kind = 'note', with = 's8', at = {n = 51, fp = 'here follow the right wall until'}},
+        {id = 's52', kind = 'note', with = 's8', at = {n = 52, fp = 'at the door light the torch'}},
+        {id = 's53', kind = 'note', with = 's8', at = {n = 53, fp = 'head south and take a right'}},
+        {id = 's54', kind = 'note', with = 's8', at = {n = 54, fp = 'inside you will be in the'}},
+        {id = 's55', kind = 'note', with = 's8', at = {n = 55, fp = 'if the cutscene did not trigger'}},
+        {id = 's56', kind = 'note', with = 's8', at = {n = 56, fp = 'everything in this area aggros therefore'}},
+        {id = 's57', kind = 'note', with = 's8', at = {n = 57, fp = 'from the entrance of beadeaux hug'}},
+        {id = 's58', kind = 'note', with = 's8', at = {n = 58, fp = 'make your way down the tunnel'}},
+        {id = 's59', kind = 'note', with = 's8', at = {n = 59, fp = 'there are no monsters in here'}},
+        {id = 's60', kind = 'note', with = 's8', at = {n = 60, fp = 'click on the door to the'}},
+        {id = 's61', kind = 'note', with = 's8', at = {n = 61, fp = 'speak to goggehn in the bastokan'}},
+    },
+}

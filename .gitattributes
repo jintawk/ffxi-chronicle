@@ -1,0 +1,12 @@
+*.sh text eol=lf
+*.dll binary
+*.png binary
+*.jpg binary
+*.PNG binary
+
+# Kept in the repository, left out of `git archive` release zips
+test/           export-ignore
+plugin/test/    export-ignore
+media/          export-ignore
+.gitattributes  export-ignore
+.gitignore      export-ignore
