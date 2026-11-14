@@ -2,12 +2,22 @@
 --
 --   cd addons/chronicle && "/c/Program Files (x86)/Lua/5.1/lua.exe" test/test_data.lua
 --
--- Loads v1 (../chronicle/data.lua with its eager wiki data) and v2
+-- Loads v1 (its data.lua with the eager wiki data) and v2
 -- (core/data.lua with core/meta.lua) in turn, feeds both the same fixture
 -- 0x056 packets and compares every area's status, every entry's metadata,
 -- and name -> area lookups. Prints the Lua heap after each load.
 
-local V1 = '../chronicle/'
+-- v1's data layer is the reference this suite compares v2 against. It is not part of this
+-- repository; check it out beside the addon with
+--     git worktree add ../chronicle-v1 v1.4.2
+-- or point CR_V1 at a v1 checkout of your own.
+local V1 = os.getenv('CR_V1') or '../chronicle-v1/'
+local v1_probe = io.open(V1 .. 'data.lua')
+if not v1_probe then
+    print('test_data: no v1 reference at ' .. V1 .. " -- run 'git worktree add ../chronicle-v1 v1.4.2', or set CR_V1")
+    os.exit(2)
+end
+v1_probe:close()
 local V2 = './'
 
 local pass, fail = 0, 0
