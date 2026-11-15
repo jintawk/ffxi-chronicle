@@ -2,9 +2,9 @@
 
 A quest and mission tracker for Final Fantasy XI, drawn in the game's own windows.
 
-Chronicle shows your completion across every quest area and mission storyline, lets you browse and
-search them, checks your bags for what a quest needs, and shows the walkthrough from BG-wiki with
-its headings, links, maps and tabs intact.
+Chronicle shows your completion across every quest area, mission storyline and Records of Eminence
+category, lets you browse and search them, checks your bags for what a quest needs, and shows the
+walkthrough from BG-wiki with its headings, links, maps and tabs intact.
 
 ![Chronicle's home screen](media/home.png)
 
@@ -25,9 +25,12 @@ game's interface, in whichever of the eight window styles you have set in the ga
 
 ## Features
 
-- Completion for 11 quest areas and 15 mission storylines, read from the game's own quest log
-- A home screen with Missions and Quests tabs, overall completion, a card per area, and what is in
-  progress with the next step of each
+- Completion for 11 quest areas, 15 mission storylines and all 1,508 Records of Eminence
+  objectives, read from the game's own quest log and record log
+- A home screen with Missions, Quests and Records tabs, overall completion, a card per area, and
+  what is in progress with the next step of each
+- Every Records objective with its goal, its rewards, whether it repeats, and the server's own
+  live count for the ones you have set
 - Area lists with search, four sort orders and five filters; an active entry shows its next step
   and how far through it you are
 - Guide details per entry: status, description, starting NPC and zone, reward, fame, title, and the
@@ -106,6 +109,7 @@ jumping to the top.
 | `//cr reset` | Reset the window's place and size |
 | `//cr refresh` | Redraw with the current data |
 | `//cr home` | Back to the home screen |
+| `//cr records` | Open the Records of Eminence tab |
 | `//cr autoshow` | Show on load, on or off |
 | `//cr size [+ \| - \| 0.5-3 \| reset]` | Window size |
 | `//cr scale one \| ui \| sim <w> <h> \| auto \| off` | Draw scale: 1:1, the game's UI size, or a simulated screen |
@@ -143,6 +147,28 @@ These areas currently show completion only:
 
 Sixty-three entries can never have step tracking, because the game gives no signal between starting
 them and finishing them.
+
+### Records of Eminence
+
+The Records tab is the game's own Records of Eminence menu with gauges on it: twelve categories,
+112 sub-categories, 1,508 objectives, all read out of the game's own data files, so a game update
+that adds objectives or a whole category needs no new Chronicle.
+
+- **Done or not done** comes from the record log the server sends on every zone, which covers every
+  objective at once. A repeatable you have finished counts as done even while you are running it
+  again.
+- **A live count** is shown for the objectives you currently have set: the server sends its own
+  number on every kill, so "121 / 200" is exact. For an objective you have not set there is no
+  count to show, and Chronicle says so rather than guessing.
+- **The middle level** shows what is inside each sub-category, because the game's own names for
+  them ("Job Levels 1", "Quests 1") do not.
+- **268 objectives wrap a quest or mission** Chronicle already documents. Those link straight into
+  that entry, with its walkthrough and its step progress.
+- **An objective the game is not offering you yet** is still listed, dimmed, saying which record
+  unlocks it. The percentage leaves those out, so it is the figure the game itself would show.
+
+The one requirement Chronicle cannot read is "have you been to this zone", which no packet carries.
+Those objectives are shown and counted, and the guide names the zone rather than claiming anything.
 
 ## Walkthroughs
 

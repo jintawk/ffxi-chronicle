@@ -469,6 +469,68 @@ do
 end
 
 ---------------------------------------------------------------------------------------------------------------------------
+-- 11b. Records of Eminence: what the catalogue keeps in the heap, and what the packet that fires on every kill costs.
+--      0x111 arrives in real time while you fight, so its handler is on the game thread's critical path.
+do
+    local roe = app.roe
+    size(760, 960)
+    app.settings.active_tab = 'mission'
+    app:home() win:flush()
+    collectgarbage('collect') collectgarbage('collect')
+    local before = collectgarbage('count')
+    app.settings.active_tab = 'records'
+    app:home() win:flush()
+    collectgarbage('collect') collectgarbage('collect')
+    local with_index = collectgarbage('count')
+    -- the largest category's own file (its text, rewards and cross-links) on top of the index
+    local big_ci, big_n = 1, 0
+    for ci, c in ipairs(roe.index().cats) do
+        local n = 0
+        for _, sub in ipairs(c.subs) do n = n + #sub.o end
+        if n > big_n then big_ci, big_n = ci, n end
+    end
+    app:roe_cat(big_ci) win:flush()
+    roe.cat_data(big_ci)
+    collectgarbage('collect') collectgarbage('collect')
+    local with_cat = collectgarbage('count')
+    print(('  heap: Records index %.0f KB, the largest category (%d records) %.0f KB more'):format(
+        with_index - before, big_n, with_cat - with_index))
+    budget('heap', 'KB the Records catalogue index keeps', with_index - before, 700, 'KB')
+    budget('heap', 'KB the largest open category adds', with_cat - with_index, 500, 'KB')
+
+    -- the longest list the tab can draw: a sub-category holds at most 27 objectives, because the
+    -- tree has three levels and the lists sit at the bottom of it
+    local big_si, big_rows = 1, 0
+    for si, sub in ipairs(roe.index().cats[big_ci].subs) do
+        if #sub.o > big_rows then big_si, big_rows = si, #sub.o end
+    end
+    sent[2] = 0
+    app:roe_sub(big_ci, big_si) win:flush()
+    local st = N.status()
+    print(('  the longest Records list: %d rows, %d quads in %d batches'):format(big_rows, st.quads, st.batches))
+    budget('alloc', 'batches to draw the longest Records list', st.batches, 80, '')
+
+    -- 0x111 fires on every kill. With the Records tab open it redraws; with another tab open it
+    -- must not cost more than the parse.
+    local pkt = H.roe_111({[0] = {16, 130}, [1] = {12, 80}, [2] = {57, 9}})
+    local function one(n)
+        local t0 = us()
+        chunk(0x111, H.roe_111({[0] = {16, 130 + n}, [1] = {12, 80}, [2] = {57, 9}}))
+        return us() - t0
+    end
+    app:home() win:flush()
+    local open_us = best(5, function() return one(math.random(1, 1000)) end)
+    app.settings.active_tab = 'mission'
+    app:home() win:flush()
+    local shut_us = best(5, function() return one(math.random(1, 1000)) end)
+    print(('  0x111: %.0f us with Records open, %.0f us with another tab open'):format(open_us, shut_us))
+    budget('time', 'us for a 0x111 while the Records tab is open', open_us, 9000, 'us')
+    budget('time', 'us for a 0x111 while another tab is open', shut_us, 400, 'us')
+    app.settings.active_tab = 'mission'
+    app:home() win:flush()
+end
+
+---------------------------------------------------------------------------------------------------------------------------
 -- 12. A session (GC running, as in game): open a page, wheel through it a notch every 4 frames, hover links, a 0x055 and a bag
 --     change; the worst waited handler other than the page opens (best of 3 sessions)
 do

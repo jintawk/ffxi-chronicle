@@ -518,6 +518,7 @@ local HELP = {
     '  //%s reset        reset place and size',
     '  //%s refresh      redraw with current data',
     '  //%s home         back to Home',
+    '  //%s records      the Records of Eminence tab',
     '  //%s autoshow     toggle showing on load',
     '  //%s size [+|-|n|reset]   the window size (0.5 - 3.0)',
     '  //%s scale one | ui | sim <w> <h> | auto | off',
@@ -539,6 +540,13 @@ windower.register_event('addon command', function(...)
     elseif cmd == 'reset' then if start() then app.prefs.change('reset') win:invalidate('all') win:flush() end
     elseif cmd == 'refresh' then refresh()
     elseif cmd == 'home' then app:home()
+    elseif cmd == 'records' or cmd == 'roe' or cmd == 'r' then
+        settings.active_tab = 'records'
+        save()
+        if start() then
+            app:home()
+            win:show()
+        end
     elseif cmd == 'autoshow' then
         settings.visible_on_load = not settings.visible_on_load
         save()

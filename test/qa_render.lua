@@ -47,6 +47,7 @@ local env = H.load({native = 'real', settings = {visible_on_load = false, share_
 package.loaded['core/nui'].ffxi_dir = FFXI
 env.cmd('show')
 env.packets(H.fixture_packets(530))
+H.feed_roe(env)                 -- the Records tab's three packets, the same state every run
 local app, win, N = env.app, env.win(), env.N
 local ops = require('ui/ops')
 local site = N.status().site
@@ -377,6 +378,27 @@ if with_screens then
     sized('guide_nopage', function() app:entry('mission', 'toau', "Sentinel's Honor") end)
     sized('guide_reqs', function() app:entry('quest', 'jeuno', 'Fistful of Fury') end)
     sized('settings', function() app:go('settings', {}, 0) end)
+
+    -- Records of Eminence: the four screens of the third tab. The ids are fixed so the frames
+    -- are: 1 is completed, 16 is a counter the server is reporting, 1313 wraps a mission
+    -- Chronicle documents, 11 is locked behind a record the fixture has not completed.
+    app.settings.active_tab = 'records'
+    sized('home_records', function() app.settings.active_tab = 'records' app:home() end)
+    sized('records_cat', function() app:roe_cat(1) end)
+    sized('records_sub', function() app:roe_sub(1, 1) end)
+    -- the longest list in the tab, for a screen of nothing but rows
+    local big_ci, big_si, big_n = 1, 1, 0
+    for ci, c in ipairs(app.roe.index().cats) do
+        for si, sub in ipairs(c.subs) do
+            if #sub.o > big_n then big_ci, big_si, big_n = ci, si, #sub.o end
+        end
+    end
+    sized('records_sub_big', function() app:roe_sub(big_ci, big_si) end)
+    sized('records_obj', function() app:roe_objective(1) end)
+    sized('records_obj_counter', function() app:roe_objective(16) end)
+    sized('records_obj_link', function() app:roe_objective(1313) end)
+    sized('records_obj_locked', function() app:roe_objective(11) end)
+    app.settings.active_tab = 'mission'
 end
 
 local f = assert(io.open(out .. '/manifest.json', 'w'))

@@ -1,5 +1,6 @@
 data/
-tools/
+tools/*
+!tools/gen_roe.py
 plugin/out/
 docs/
 CHECKLIST.md

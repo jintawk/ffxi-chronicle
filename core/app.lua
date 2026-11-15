@@ -110,7 +110,9 @@ end
 -- An objective reached from anywhere (a card, the In progress list, a search): the stack is
 -- flattened to the path the tree gives it.
 function App:roe_objective(oid, scroll)
-    local ci, si = self.roe and self.roe.locate(oid)
+    if not self.roe then return false end
+    -- `self.roe and self.roe.locate(oid)` would keep only the first of the two returns
+    local ci, si = self.roe.locate(oid)
     if not ci then return false end
     self.stack = {{name = 'home', params = {}, scroll = 0},
                   {name = 'rcat', params = {ci = ci}, scroll = 0},

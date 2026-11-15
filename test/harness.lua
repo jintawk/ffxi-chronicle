@@ -246,4 +246,68 @@ function H.fixture_packets(cop)
     return out
 end
 
+-- Records of Eminence: the three packets that carry it, built by hand, so a test and a render
+-- share one deterministic state. The pattern of completed records is arbitrary but fixed: enough
+-- done to open the tree and to give every category a different percentage.
+local function le32(v)
+    return string.char(v % 256, math.floor(v / 256) % 256, math.floor(v / 65536) % 256,
+                       math.floor(v / 16777216) % 256)
+end
+H.le32 = le32
+
+function H.roe_110(sparks, deeds, bytes)
+    local s = string.rep(' ', 4) .. le32(sparks or 0)
+          .. string.char((deeds or 0) % 256, math.floor((deeds or 0) / 256) % 256, 0, 0)
+    for i = 0, 7 do s = s .. string.char((bytes or {})[i] or 0) end
+    return s
+end
+
+-- slots: {[slot index 0-63] = {id, count}}
+function H.roe_111(slots)
+    local s = string.rep(' ', 4)
+    for i = 0, 63 do
+        local e = (slots or {})[i]
+        s = s .. le32(e and (e[1] + e[2] * 4096) or 0)
+    end
+    return s
+end
+
+-- one quarter of the ever-completed bitfield; ids outside it are ignored
+function H.roe_112(quarter, ids)
+    local b = {}
+    for i = 1, 128 do b[i] = 0 end
+    for _, id in ipairs(ids) do
+        if math.floor(id / 1024) == quarter then
+            local within = id % 1024
+            local byte = math.floor(within / 8) + 1
+            b[byte] = b[byte] + 2 ^ (within % 8)
+        end
+    end
+    local s = string.rep(' ', 4)
+    for i = 1, 128 do s = s .. string.char(b[i]) end
+    return s .. string.char(quarter, 0, 0, 0)
+end
+
+function H.roe_061(unity)
+    return string.rep(' ', 0x58) .. le32(unity or 0) .. string.rep(' ', 4)
+end
+
+-- The fixture state: records 1 and 5 (which open ten of the twelve categories) plus every third
+-- id up to 1200, Unity 8, the Unity sets at rotation 0, and four slots with counts.
+function H.roe_fixture()
+    local done = {1, 5}
+    for id = 3, 1200, 3 do done[#done + 1] = id end
+    local out = {}
+    for q = 0, 3 do out[#out + 1] = {0x112, H.roe_112(q, done)} end
+    out[#out + 1] = {0x110, H.roe_110(99999, 7, {[0] = 0, [1] = 0})}
+    out[#out + 1] = {0x111, H.roe_111({[0] = {16, 121}, [1] = {12, 79}, [2] = {57, 9},
+                                       [3] = {137, 1}, [63] = {4018, 2}})}
+    out[#out + 1] = {0x061, H.roe_061(8)}
+    return out
+end
+
+function H.feed_roe(env)
+    for _, p in ipairs(H.roe_fixture()) do env.fire('incoming chunk', p[1], p[2]) end
+end
+
 return H
