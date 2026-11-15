@@ -41,11 +41,16 @@ game's interface, in whichever of the eight window styles you have set in the ga
 
 ## Installation
 
-Copy the `chronicle` folder into `Windower/addons/` and load it:
+Download the zip from the [latest release](https://github.com/jintawk/ffxi-chronicle/releases/latest)
+and copy the `chronicle` folder inside it into `Windower/addons/`, then load it:
 
 ```
 //lua load chronicle
 ```
+
+The folder has to be called `chronicle`: Windower loads an addon from
+`addons/<name>/<name>.lua`, so GitHub's "Source code (zip)", which unpacks as `ffxi-chronicle-x.y.z`,
+will not load until it is renamed.
 
 `libs/_chronicle.dll` is the native drawing layer: 32-bit, built from `plugin/`. If it cannot draw,
 because it did not load or because a game update moved the code it looks for, Chronicle says so in
@@ -53,6 +58,12 @@ the chat log and then stays out of the way. It draws nothing and takes no input.
 
 The DLL needs the Universal C Runtime, which Windows 10 and 11 include. On Windows 7 or 8.1,
 install update KB2999226 first or the DLL will not load.
+
+If Chronicle says `assets missing`, it could not read something out of your game installation. The
+message names each piece, why, and the folder it read from, for example
+`window art missing (ROM\0\19.DAT: newtex 256x256 not 128x128); ... ; in C:\...`. Only the chat font
+is required: without the window art Chronicle draws a plain window instead. If it will not draw at
+all, open an issue with that whole line in it.
 
 To build the DLL yourself rather than use the one in the repository:
 

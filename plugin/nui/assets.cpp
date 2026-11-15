@@ -2,6 +2,8 @@
 // walk, DXT1/DXT3 decodes and the fontshp glyph table are the same code paths, made stand-alone).
 #include "assets.hpp"
 
+#include "client.hpp"
+
 #define WIN32_LEAN_AND_MEAN
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -10,23 +12,15 @@
 
 #include <cstdio>
 #include <cstring>
-#include <fstream>
 
 namespace nui {
 namespace {
 
 // The whole file in one read of its size (review HOST-5: before 1.2.6 an istreambuf_iterator copied
-// FFXiMain.dll's 2.9 MB and the menu DAT's 4.3 MB a byte at a time).
+// FFXiMain.dll's 2.9 MB and the menu DAT's 4.3 MB a byte at a time). 1.2.10: opened wide
+// (client.hpp), so a path the ANSI codepage cannot spell still reads.
 bool slurp(std::string const& path, std::vector<unsigned char>& out) {
-    std::ifstream f(path, std::ios::binary);
-    if (!f) return false;
-    f.seekg(0, std::ios::end);
-    std::streamoff const n = f.tellg();
-    if (n < 0 || n > (256 << 20)) return false;
-    f.seekg(0);
-    out.resize(std::size_t(n));
-    f.read(reinterpret_cast<char*>(out.data()), n);
-    return f.gcount() == n;
+    return file_read(path, out, 256u << 20);
 }
 
 // The moji advance widths found in FFXiMain.dll, per install directory (review HOST-5): read once, so
@@ -44,11 +38,7 @@ void wc_lock() { while (InterlockedCompareExchange(&g_widths.lock, 1, 0) != 0) S
 void wc_unlock() { InterlockedExchange(&g_widths.lock, 0); }
 
 bool read_bytes(std::string const& path, size_t off, void* dst, size_t n) {
-    std::ifstream f(path, std::ios::binary);
-    if (!f) return false;
-    f.seekg(static_cast<std::streamoff>(off));
-    f.read(static_cast<char*>(dst), static_cast<std::streamsize>(n));
-    return static_cast<size_t>(f.gcount()) == n;
+    return file_read_at(path, off, dst, n);
 }
 
 // ROM path of a DAT file id from VTABLE.DAT / FTABLE.DAT
@@ -61,6 +51,11 @@ std::string dat_path(std::string const& ffxi, unsigned fid) {
     if (rom == 1) std::snprintf(p, sizeof(p), "ROM\\%u\\%u.DAT", e >> 7, e & 0x7F);
     else std::snprintf(p, sizeof(p), "ROM%u\\%u\\%u.DAT", rom, e >> 7, e & 0x7F);
     return ffxi + p;
+}
+
+// a DAT path without the install folder in front of it, for a chat line that has to stay short
+std::string short_path(std::string const& ffxi, std::string const& path) {
+    return path.compare(0, ffxi.size(), ffxi) == 0 ? path.substr(ffxi.size()) : path;
 }
 
 uint32_t rgb565(unsigned c) {
@@ -139,34 +134,163 @@ bool name_is(std::vector<unsigned char> const& buf, size_t at, char const* name1
     return at + 16 <= buf.size() && std::memcmp(&buf[at], name16, 16) == 0;
 }
 
-// a 0x20 texture chunk -> its top `rows` rows decoded into the atlas at (ax, ay)
-bool blit_texture(std::vector<unsigned char> const& buf, Chunk const& c, int want_w, int rows,
-                  std::vector<uint32_t>& atlas, int ax, int ay) {
+// DXT5 -> ARGB into dst (stride in pixels): DXT3's colour block behind an interpolated alpha block.
+// DXT4 is the same bits with the colour premultiplied by that alpha, and DXT2 is DXT3's; both are
+// decoded as their straight-alpha twin, which is what they are apart from the premultiply.
+void dxt5(unsigned char const* src, uint32_t* dst, int width, int rows, int stride) {
+    int const bw = width / 4;
+    for (int by = 0; by < rows / 4; ++by)
+        for (int bx = 0; bx < bw; ++bx) {
+            unsigned char const* b = src + (by * bw + bx) * 16;
+            unsigned a[8] = {b[0], b[1], 0, 0, 0, 0, 0, 0};
+            if (a[0] > a[1])
+                for (int k = 1; k <= 6; ++k) a[1 + k] = ((7 - k) * a[0] + k * a[1] + 3) / 7;
+            else {
+                for (int k = 1; k <= 4; ++k) a[1 + k] = ((5 - k) * a[0] + k * a[1] + 2) / 5;
+                a[6] = 0;
+                a[7] = 255;
+            }
+            uint64_t abits = 0;
+            for (int i = 0; i < 6; ++i) abits |= uint64_t(b[2 + i]) << (8 * i);
+            unsigned const c0 = b[8] | (b[9] << 8), c1 = b[10] | (b[11] << 8);
+            uint32_t pal[4] = {rgb565(c0), rgb565(c1), 0, 0};
+            for (int k = 0; k < 2; ++k) {
+                uint32_t const p0 = pal[k], p1 = pal[1 - k];
+                uint32_t m = 0;
+                for (int s = 0; s < 24; s += 8)
+                    m |= static_cast<uint32_t>((2 * ((p0 >> s) & 0xFF) + ((p1 >> s) & 0xFF) + 1) / 3) << s;
+                pal[2 + k] = m;
+            }
+            uint32_t const bits = b[12] | (b[13] << 8) | (b[14] << 16) | (uint32_t(b[15]) << 24);
+            for (int i = 0; i < 16; ++i)
+                dst[(by * 4 + (i >> 2)) * stride + bx * 4 + (i & 3)] =
+                    (a[(abits >> (3 * i)) & 7] << 24) | pal[(bits >> (2 * i)) & 3];
+        }
+}
+
+// The client's alpha convention, the one DXT3 above uses too: 0x80 is opaque, so a byte doubles and
+// clamps.
+uint32_t alpha8(unsigned a) { return (a >= 0x80 ? 255u : a * 2) << 24; }
+
+// An uncompressed image's top `rows` rows -> ARGB. Those rows are stored bottom to top, so row y
+// here is stored row h - 1 - y; 4 and 8 bit are palette indices (the palette is 4 bytes a colour,
+// B G R A), 16 bit is A1R5G5B5, 24 bit is B G R and 32 bit is B G R A.
+void raw_rows(unsigned char const* px, unsigned char const* pal, unsigned bits, int w, int h, int rows,
+              uint32_t* dst, int stride) {
+    for (int y = 0; y < rows; ++y) {
+        int const sy = h - 1 - y;
+        uint32_t* out = dst + size_t(y) * stride;
+        for (int x = 0; x < w; ++x) {
+            size_t const p = size_t(sy) * size_t(w) + size_t(x);
+            unsigned idx = 0;
+            if (bits <= 8) {
+                // the client reads a 4 bit row's even pixel from the high nibble, the odd one from
+                // the low nibble of the same byte (Render_CreateTextureFromDat case 4)
+                idx = bits == 4 ? ((px[p / 2] >> ((p & 1) ? 0 : 4)) & 0xF) : px[p];
+                unsigned char const* e = pal + size_t(idx) * 4;
+                out[x] = alpha8(e[3]) | (uint32_t(e[2]) << 16) | (uint32_t(e[1]) << 8) | e[0];
+            } else if (bits == 16) {
+                unsigned const v = px[p * 2] | (px[p * 2 + 1] << 8);
+                uint32_t const r = ((v >> 10) & 0x1F) * 255 / 31, g = ((v >> 5) & 0x1F) * 255 / 31,
+                               b = (v & 0x1F) * 255 / 31;
+                out[x] = ((v & 0x8000) ? 0xFF000000u : 0u) | (r << 16) | (g << 8) | b;
+            } else if (bits == 24) {
+                unsigned char const* e = px + p * 3;
+                out[x] = 0xFF000000u | (uint32_t(e[2]) << 16) | (uint32_t(e[1]) << 8) | e[0];
+            } else {
+                unsigned char const* e = px + p * 4;
+                out[x] = alpha8(e[3]) | (uint32_t(e[2]) << 16) | (uint32_t(e[1]) << 8) | e[0];
+            }
+        }
+    }
+}
+
+std::string hex32(uint32_t v) {
+    char b[11];
+    std::snprintf(b, sizeof(b), "%08lx", static_cast<unsigned long>(v));
+    return b;
+}
+
+// The texture formats the game's own loader takes (Render_CreateTextureFromDat, FFXiMain
+// 0x10039e50): a DXT fourcc, or an uncompressed image whose depth is the header's `bits` field.
+// Before 1.2.10 only DXT1 and DXT3 were read, the two the author's own install happens to use for
+// these pieces, so an install that stores the window art or the gauge any other way loaded none of
+// it and the addon refused to draw at all (ffxi-chronicle issue 10).
+struct TexInfo {
+    int w = 0, h = 0;
+    unsigned bits = 0;             // uncompressed depth; 0 = a DXT fourcc
+    uint32_t fourcc = 0;
+    size_t pal = 0, px = 0;        // palette and first pixel byte
+};
+
+// The texture header of a 0x20 chunk sits at chunk + 0x21: width at +4, height at +8, the
+// uncompressed depth at +14, the fourcc at +40, then the palette (4 and 8 bit) or the pixels.
+bool tex_info(std::vector<unsigned char> const& buf, Chunk const& c, int rows, TexInfo& t, std::string& why) {
     size_t const h = c.off + 0x21;
-    if (h + 52 > buf.size()) return false;
+    if (h + 52 > buf.size()) { why = "header past the end of the DAT"; return false; }
     int32_t w = 0, hh = 0;
+    uint16_t bits = 0;
     uint32_t fmt = 0;
     std::memcpy(&w, &buf[h + 4], 4);
     std::memcpy(&hh, &buf[h + 8], 4);
+    std::memcpy(&bits, &buf[h + 14], 2);
     std::memcpy(&fmt, &buf[h + 40], 4);
-    if (w != want_w || hh < rows) return false;
-    size_t const px = h + 44 + 8;
-    if (atlas.empty()) {                // metrics only (the atlas is in the shared cache): check, do not decode
-        size_t const block = fmt == 0x44585433 ? 16 : fmt == 0x44585431 ? 8 : 0;
-        return block && px + size_t(w / 4) * (rows / 4) * block <= buf.size();
+    t.w = w;
+    t.h = hh;
+    // A size from the file bounds every count below: without this a header claiming 0x2000000 rows
+    // makes `need` wrap to 0 in 32 bits, the byte check passes and the decode reads off the end.
+    // 4096 is the client's own largest texture (the atlas is 1024 x 512).
+    if (w <= 0 || hh <= 0 || w > 4096 || hh > 4096) {
+        why = "size " + std::to_string(w) + "x" + std::to_string(hh);
+        return false;
     }
+    size_t need = 0;
+#ifdef NUI_FAULT_DXT_ONLY                 // self-test: the two formats of before 1.2.10 (issue 10)
+    if (fmt != 0x44585431 && fmt != 0x44585433) { why = "format " + hex32(fmt); return false; }
+#endif
+    if (fmt >= 0x44585431 && fmt <= 0x44585435) {                 // DXT1 .. DXT5
+        t.fourcc = fmt;
+        t.px = h + 44 + 8;
+        need = size_t(w / 4) * size_t(rows / 4) * (fmt == 0x44585431 ? 8 : 16);   // only the rows read
+    } else if (bits == 4 || bits == 8 || bits == 16 || bits == 24 || bits == 32) {
+        t.bits = bits;
+        t.pal = h + 44;
+        t.px = t.pal + (bits == 4 ? 64 : bits == 8 ? 1024 : 0);
+        need = (size_t(w) * size_t(hh) * bits) / 8;               // all of it: the rows run bottom to top
+    } else {
+        why = "format " + hex32(fmt) + " depth " + std::to_string(bits);
+        return false;
+    }
+    if (t.px + need > buf.size()) { why = "pixels past the end of the DAT"; return false; }
+    return true;
+}
+
+// a 0x20 texture chunk -> its top `rows` rows decoded into the atlas at (ax, ay); `why` takes the
+// reason it could not be (assets missing: it names the piece that stopped the load)
+bool blit_texture(std::vector<unsigned char> const& buf, Chunk const& c, int want_w, int rows,
+                  std::vector<uint32_t>& atlas, int ax, int ay, std::string* why = nullptr) {
+    std::string reason;
+    TexInfo t;
+    if (!tex_info(buf, c, rows, t, reason)) {
+        if (why) *why = reason;
+        return false;
+    }
+    if (t.w != want_w || t.h < rows) {
+        if (why)
+            *why = std::to_string(t.w) + "x" + std::to_string(t.h) + " not " + std::to_string(want_w) + "x" +
+                   std::to_string(rows);
+        return false;
+    }
+    if (atlas.empty()) return true;     // metrics only (the atlas is in the shared cache): checked, not decoded
     uint32_t* dst = &atlas[size_t(ay) * kAtlasW + ax];
-    if (fmt == 0x44585433) {            // DXT3
-        if (px + size_t(w / 4) * (rows / 4) * 16 > buf.size()) return false;
-        dxt3(&buf[px], dst, w, rows, kAtlasW);
-        return true;
+    switch (t.fourcc) {
+        case 0x44585431: dxt1(&buf[t.px], dst, t.w, rows, kAtlasW); return true;
+        case 0x44585432:                // premultiplied DXT3
+        case 0x44585433: dxt3(&buf[t.px], dst, t.w, rows, kAtlasW); return true;
+        case 0x44585434:                // premultiplied DXT5
+        case 0x44585435: dxt5(&buf[t.px], dst, t.w, rows, kAtlasW); return true;
+        default: raw_rows(&buf[t.px], &buf[t.pal], t.bits, t.w, t.h, rows, dst, kAtlasW); return true;
     }
-    if (fmt == 0x44585431) {            // DXT1
-        if (px + size_t(w / 4) * (rows / 4) * 8 > buf.size()) return false;
-        dxt1(&buf[px], dst, w, rows, kAtlasW);
-        return true;
-    }
-    return false;
 }
 
 // 0x31 sprite sheet payload -> sprites
@@ -297,18 +421,28 @@ bool Assets::load(std::string const& ffxi, int window_type, unsigned menu_fid, b
     }
     log += widths_from_game ? "widths from FFXiMain.dll; " : "widths built-in; ";
 
-    // window type pieces + recipe
-    std::string const wpath = dat_path(ffxi, 13 + window_type);
+    // window type pieces + recipe. `why` says what stopped it, so a report of a window that draws
+    // nothing arrives with the file and the reason in it instead of only "missing" (issue 10).
+    unsigned const wfid = unsigned(13 + window_type);
+    std::string const wpath = dat_path(ffxi, wfid);
+    std::string why;
     std::vector<unsigned char> wb;
-    if (!wpath.empty() && slurp(wpath, wb)) {
+    if (wpath.empty()) why = "no DAT holds file " + std::to_string(wfid);
+    else if (!slurp(wpath, wb)) why = short_path(ffxi, wpath) + " cannot be read";
+    else {
         int got = 0;
+        auto one = [&](Chunk const& c, char const* name, int w, int rows, int ax, int ay) {
+            std::string r;
+            if (blit_texture(wb, c, w, rows, atlas, ax, ay, &r)) ++got;
+            else if (why.empty()) why = short_path(ffxi, wpath) + ": " + name + " " + r;
+        };
         for (auto const& c : walk(wb)) {
             size_t const nm = c.off + 17;
             if (c.type == 0x20) {
-                if (name_is(wb, nm, "menu    newtex  ")) got += blit_texture(wb, c, 128, 128, atlas, kBodyX, kBodyY);
-                else if (name_is(wb, nm, "menu    hfr1    ")) got += blit_texture(wb, c, 32, 32, atlas, kHfrX, kHfrY);
-                else if (name_is(wb, nm, "menu    vfr1    ")) got += blit_texture(wb, c, 32, 32, atlas, kVfrX, kVfrY);
-                else if (name_is(wb, nm, "menu    corner  ")) got += blit_texture(wb, c, 32, 32, atlas, kCornerX, kCornerY);
+                if (name_is(wb, nm, "menu    newtex  ")) one(c, "newtex", 128, 128, kBodyX, kBodyY);
+                else if (name_is(wb, nm, "menu    hfr1    ")) one(c, "hfr1", 32, 32, kHfrX, kHfrY);
+                else if (name_is(wb, nm, "menu    vfr1    ")) one(c, "vfr1", 32, 32, kVfrX, kVfrY);
+                else if (name_is(wb, nm, "menu    corner  ")) one(c, "corner", 32, 32, kCornerX, kCornerY);
             } else if (c.type == 0x31) {
 #ifndef NUI_FAULT_RECIPE_LAST             // self-test: the last sprite sheet, whatever its name (before 1.2.6)
                 if (name_is(wb, c.off + 16, "menu    win00   ")) frame = parse_sheet(wb, c);   // review REND-8: by name
@@ -318,19 +452,27 @@ bool Assets::load(std::string const& ffxi, int window_type, unsigned menu_fid, b
             }
         }
         have_window = got == 4 && frame_recipe_ok(frame);
+        if (!have_window && why.empty())
+            why = short_path(ffxi, wpath) + (got == 4 ? ": no win00 recipe" : ": " + std::to_string(got) + " of 4 pieces");
     }
-    log += have_window ? "window type " + std::to_string(window_type) + " + win00 recipe; " : "window art missing; ";
+    log += have_window ? "window type " + std::to_string(window_type) + " + win00 recipe; "
+                       : "window art missing (" + why + "); ";
 
     // menu DAT: fonts and gauge
     std::string const mpath = dat_path(ffxi, menu_fid);
+    std::string mwhy, gwhy;
     std::vector<unsigned char> mb;
-    if (!mpath.empty() && slurp(mpath, mb)) {
+    if (mpath.empty()) mwhy = gwhy = "no DAT holds file " + std::to_string(menu_fid);
+    else if (!slurp(mpath, mb)) mwhy = gwhy = short_path(ffxi, mpath) + " cannot be read";
+    else {
+        mwhy = short_path(ffxi, mpath) + ": no font    moji";
+        gwhy = short_path(ffxi, mpath) + ": no menu    gauge";
         for (auto const& c : walk(mb)) {
             size_t const nm = c.off + 17;
             if (c.type == 0x20 && !have_moji && name_is(mb, nm, "font    moji    "))
-                have_moji = blit_texture(mb, c, 1024, 32, atlas, kMojiX, kMojiY);
+                have_moji = blit_texture(mb, c, 1024, 32, atlas, kMojiX, kMojiY, &mwhy);
             else if (c.type == 0x20 && !have_gauge && name_is(mb, nm, "menu    gauge   "))
-                have_gauge = blit_texture(mb, c, 64, 64, atlas, kGaugeX, kGaugeY);
+                have_gauge = blit_texture(mb, c, 64, 64, atlas, kGaugeX, kGaugeY, &gwhy);
             else if (c.type == 0x20 && name_is(mb, nm, "font    font    "))
                 blit_texture(mb, c, 256, 256, atlas, kFontX, kFontY);
             else if (c.type == 0x20 && !have_wtitle && name_is(mb, nm, "menu    menu2fon"))
@@ -367,11 +509,17 @@ bool Assets::load(std::string const& ffxi, int window_type, unsigned menu_fid, b
         for (WCell const& c : kWCells)
             wtitle[c.c - 0x20] = WGlyph {float(kM2fX + c.u), float(kM2fY + c.v), float(c.w), float(c.h), float(c.top), float(c.adv)};
     }
-    log += have_moji ? "moji; " : "moji missing; ";
+    log += have_moji ? "moji; " : "moji missing (" + mwhy + "); ";
     log += have_wtitle ? "window title font; " : "window title font missing; ";
     log += have_title ? "title font; " : "title font missing; ";
-    log += have_gauge ? "gauge" : "gauge missing";
-    return have_window && have_moji;
+    log += have_gauge ? "gauge" : "gauge missing (" + gwhy + ")";
+    // Anything missing: say where the game was read from, so one chat line carries the whole answer.
+    if (!(have_window && have_moji && have_wtitle && have_title && have_gauge)) log += "; in " + ffxi;
+    // The floor is the text font: without it nothing can be read, and the module says so and draws
+    // nothing. Everything else has a fallback - built-in advance widths, a plain frame in place of
+    // the window art (ui.cpp), a flat bar in place of the gauge - so a client whose art cannot be
+    // read still gets a usable window instead of no addon at all (1.2.10, issue 10).
+    return have_moji;
 }
 
 }  // namespace nui

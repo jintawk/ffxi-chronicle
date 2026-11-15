@@ -39,8 +39,15 @@ function nui.load(dir, name)
 end
 
 function nui.screen_px()
-    local ws = windower.get_windower_settings()
-    return ws.x_res or ws.ui_x_res or 0, ws.y_res or ws.ui_y_res or 0
+    local ws = windower.get_windower_settings() or {}
+    local w, h = ws.x_res or ws.ui_x_res or 0, ws.y_res or ws.ui_y_res or 0
+    if w < 320 or h < 240 then
+        -- A Windower that does not report the resolution: the game's own UI size, else a plain
+        -- default. A zero screen leaves the window pinned in the corner at its smallest.
+        local s = nui.N and nui.N.status()
+        if s and s.ui_found and (s.ui_w or 0) >= 320 then w, h = s.ui_w, s.ui_h else w, h = 1920, 1080 end
+    end
+    return w, h
 end
 
 -- The logical screen, in Lua units.

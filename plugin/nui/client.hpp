@@ -10,8 +10,30 @@
 
 namespace nui {
 
-// The folder holding FFXiMain.dll, ending with a backslash. False when the game is not loaded.
+// The folder holding FFXiMain.dll, ending with a backslash, as UTF-8. False when the game is not
+// loaded. 1.2.10: read wide and with no fixed buffer, so an install whose path the system ANSI
+// codepage cannot spell, or one deeper than MAX_PATH, still resolves.
 bool find_ffxi_dir(std::string& out);
+
+// A path as the OS wants it. The narrow paths this library carries are UTF-8 when nui made them
+// (find_ffxi_dir) and the system ANSI codepage when they came from Lua (Windower hands ANSI), so
+// this reads UTF-8 and falls back to ANSI when the bytes are not valid UTF-8; an ASCII path, which
+// is every ordinary install, is the same either way. A path at or over MAX_PATH that names a drive
+// gets the \\?\ prefix. Every file nui opens goes through here: before 1.2.10 they went through the
+// ANSI CRT, so an install under a folder the codepage cannot spell read nothing at all.
+std::wstring to_wide(std::string const& path);
+
+// An open read handle, shared for read, write and delete so it never stands in anyone's way.
+// INVALID_HANDLE_VALUE when the file cannot be opened.
+void* file_open(std::string const& path);
+
+// The whole file in one read, refused over `cap` bytes; `limit` (0 = all) caps what is copied out,
+// `size` (optional) takes the file's real size. False when it cannot be opened or read in full.
+bool file_read(std::string const& path, std::vector<unsigned char>& out, std::uint64_t cap,
+               std::size_t limit = 0, std::uint64_t* size = nullptr);
+
+// `n` bytes at `off`. False when the file cannot be opened or holds fewer.
+bool file_read_at(std::string const& path, std::uint64_t off, void* dst, std::size_t n);
 
 std::uintptr_t ffxi_base();
 

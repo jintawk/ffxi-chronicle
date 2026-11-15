@@ -14,6 +14,8 @@
 //   C x0 y0 x1 y1                     push a clip rectangle;   c   pop it
 #include "ops.hpp"
 
+#include "client.hpp"
+
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
@@ -324,11 +326,9 @@ int ops_text(Ui& ui, std::string const& text, std::string& err, TextureStore* st
 }
 
 int ops_scene(Ui& ui, std::string const& path, std::string& err, TextureStore* store) {
-    std::ifstream fi(path, std::ios::binary);
-    if (!fi) { err = "cannot open " + path; return -1; }
-    std::stringstream buf;
-    buf << fi.rdbuf();
-    return ops_text(ui, buf.str(), err, store);
+    std::vector<unsigned char> buf;
+    if (!file_read(path, buf, 64u << 20)) { err = "cannot open " + path; return -1; }
+    return ops_text(ui, std::string(buf.begin(), buf.end()), err, store);
 }
 
 }  // namespace nui

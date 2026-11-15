@@ -5,15 +5,101 @@
 
 namespace nui {
 
+namespace {
+std::string from_wide(std::wstring const& w) {
+    int const n = WideCharToMultiByte(CP_UTF8, 0, w.c_str(), int(w.size()), nullptr, 0, nullptr, nullptr);
+    if (n <= 0) return {};
+    std::string out(std::size_t(n), '\0');
+    WideCharToMultiByte(CP_UTF8, 0, w.c_str(), int(w.size()), &out[0], n, nullptr, nullptr);
+    return out;
+}
+
+std::wstring widen(std::string const& s, UINT cp, DWORD flags) {
+    int const n = MultiByteToWideChar(cp, flags, s.c_str(), int(s.size()), nullptr, 0);
+    if (n <= 0) return {};
+    std::wstring out(std::size_t(n), L'\0');
+    MultiByteToWideChar(cp, flags, s.c_str(), int(s.size()), &out[0], n);
+    return out;
+}
+}  // namespace
+
+std::wstring to_wide(std::string const& path) {
+    std::wstring w = widen(path, CP_UTF8, MB_ERR_INVALID_CHARS);
+    if (w.empty() && !path.empty()) w = widen(path, CP_ACP, 0);     // not UTF-8: Lua handed ANSI
+    // \\?\ turns off the MAX_PATH limit, but only for a full drive path with no forward slash in it
+    if (w.size() >= MAX_PATH && w.size() > 3 && w[1] == L':' && w[2] == L'\\' &&
+        w.find(L'/') == std::wstring::npos && w.compare(0, 4, L"\\\\?\\") != 0)
+        w.insert(0, L"\\\\?\\");
+    return w;
+}
+
+void* file_open(std::string const& path) {
+#ifdef NUI_FAULT_ANSI_PATHS               // self-test: the ANSI opens of before 1.2.10 (issue 10)
+    return CreateFileA(path.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr,
+                       OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+#else
+    std::wstring const w = to_wide(path);
+    if (w.empty()) return INVALID_HANDLE_VALUE;
+    return CreateFileW(w.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr,
+                       OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+#endif
+}
+
+bool file_read(std::string const& path, std::vector<unsigned char>& out, std::uint64_t cap, std::size_t limit,
+               std::uint64_t* size) {
+    HANDLE const f = static_cast<HANDLE>(file_open(path));
+    if (f == INVALID_HANDLE_VALUE) return false;
+    LARGE_INTEGER n {};
+    if (!GetFileSizeEx(f, &n) || n.QuadPart < 0 || std::uint64_t(n.QuadPart) > cap) {
+        CloseHandle(f);
+        return false;
+    }
+    if (size) *size = std::uint64_t(n.QuadPart);
+    std::uint64_t const take = limit && std::uint64_t(limit) < std::uint64_t(n.QuadPart) ? std::uint64_t(limit)
+                                                                                        : std::uint64_t(n.QuadPart);
+    out.resize(std::size_t(take));
+    std::uint64_t done = 0;
+    while (done < take) {                       // ReadFile can return short on a huge read
+        DWORD const want = DWORD(take - done > 0x1000000u ? 0x1000000u : take - done);
+        DWORD got = 0;
+        if (!ReadFile(f, out.data() + done, want, &got, nullptr) || got == 0) break;
+        done += got;
+    }
+    CloseHandle(f);
+    return done == take;
+}
+
+bool file_read_at(std::string const& path, std::uint64_t off, void* dst, std::size_t n) {
+    HANDLE const f = static_cast<HANDLE>(file_open(path));
+    if (f == INVALID_HANDLE_VALUE) return false;
+    OVERLAPPED ov {};
+    ov.Offset = DWORD(off & 0xFFFFFFFFu);
+    ov.OffsetHigh = DWORD(off >> 32);
+    DWORD got = 0;
+    bool const ok = ReadFile(f, dst, DWORD(n), &got, &ov) != 0 && got == n;
+    CloseHandle(f);
+    return ok;
+}
+
 bool find_ffxi_dir(std::string& out) {
     HMODULE m = GetModuleHandleA("FFXiMain.dll");
-    char path[MAX_PATH] {};
-    if (!m || !GetModuleFileNameA(m, path, sizeof(path))) return false;
-    char* slash = std::strrchr(path, '\\');
-    if (!slash) return false;
-    slash[1] = '\0';
-    out = path;
-    return true;
+    if (!m) return false;
+    std::wstring path(MAX_PATH, L'\0');
+    for (;;) {
+        DWORD const n = GetModuleFileNameW(m, &path[0], DWORD(path.size()));
+        if (n == 0) return false;
+        if (n < path.size()) {                  // n == size: truncated (and ERROR_INSUFFICIENT_BUFFER)
+            path.resize(n);
+            break;
+        }
+        if (path.size() >= 0x8000) return false;
+        path.resize(path.size() * 2);
+    }
+    std::size_t const slash = path.find_last_of(L'\\');
+    if (slash == std::wstring::npos) return false;
+    path.resize(slash + 1);
+    out = from_wide(path);
+    return !out.empty();
 }
 
 std::uintptr_t ffxi_base() { return reinterpret_cast<std::uintptr_t>(GetModuleHandleA("FFXiMain.dll")); }

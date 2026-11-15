@@ -259,7 +259,23 @@ void Ui::rect(float x0, float y0, float x1, float y1, uint32_t c) {
 // UI at the user's 4K setting (a 128 px body period in screenshots).
 void Ui::window(float x, float y, float w, float h, char const* title, bool active) {
     auto const& F = a.frame;
-    if (!frame_recipe_ok(F)) return;              // review REND-8: never read a sprite that has no quad
+    // No window art: a plain panel in the game's colours rather than nothing at all. An install
+    // whose window DAT cannot be read (assets.cpp: a texture format, a missing or unreadable file)
+    // still gets a window it can use; before 1.2.10 the module refused to start (issue 10). Never
+    // samples the atlas's window slots, which are empty in that case: rect() uses the white texel.
+    if (!a.have_window || !frame_recipe_ok(F)) {  // review REND-8: never read a sprite that has no quad
+        rect(x, y, x + w, y + h, 0xD0101828u);                      // body
+        rect(x, y, x + w, y + 1, 0xFF8898C0u);                      // 1 px edge
+        rect(x, y + h - 1, x + w, y + h, 0xFF8898C0u);
+        rect(x, y + 1, x + 1, y + h - 1, 0xFF8898C0u);
+        rect(x + w - 1, y + 1, x + w, y + h - 1, 0xFF8898C0u);
+        if (title && *title) {
+            if (a.have_wtitle) wtitle_text(x + w - 47 - wtitle_width(title), y, title);
+            else if (a.title_ok()) title_text(x + w - 22 - title_width(title, 9), y - 3, title, 9, argb(224, 224, 224));
+            else text(x + w - 22, y + 1, title, argb(224, 224, 224), 1);
+        }
+        return;
+    }
     auto const& body = F[active && F.size() > 9 && !F[9].empty() ? 9 : 0][0];
     int const old_blend = dl.blend;
     // body: tiled, vertex colour interpolated over the window's height (top -> bottom)

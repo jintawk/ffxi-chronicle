@@ -2,6 +2,7 @@
 #include "textures.hpp"
 
 #include "cache.hpp"
+#include "client.hpp"
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -79,17 +80,10 @@ bool fit_pixels(unsigned char* src, int iw, int ih, int max_w, int max_h, std::v
 // The file's size and up to `limit` bytes from its start (all of it when limit is 0). Files over
 // 64 MiB are refused.
 bool slurp(std::string const& path, std::vector<unsigned char>& out, std::size_t limit = 0, std::streamoff* size = nullptr) {
-    std::ifstream f(path, std::ios::binary);
-    if (!f) return false;
-    f.seekg(0, std::ios::end);
-    std::streamoff const n = f.tellg();
-    if (n < 0 || n > (64 << 20)) return false;
-    if (size) *size = n;
-    std::streamoff const take = limit && std::streamoff(limit) < n ? std::streamoff(limit) : n;
-    f.seekg(0);
-    out.resize(std::size_t(take));
-    f.read(reinterpret_cast<char*>(out.data()), take);
-    return f.gcount() == take;
+    std::uint64_t n = 0;
+    if (!file_read(path, out, 64u << 20, limit, &n)) return false;
+    if (size) *size = std::streamoff(n);
+    return true;
 }
 
 }  // namespace
@@ -218,12 +212,8 @@ bool item_icon(std::string const& ffxi, int item_id, uint32_t out[kIconCell * kI
     int const di = icon_dat(item_id);
     if (di < 0) return false;
     IconDat const& d = kIconDats[di];
-    std::ifstream f(ffxi + d.path, std::ios::binary);
-    if (!f) return false;
-    f.seekg(icon_offset(item_id, d));
     unsigned char data[0x800];
-    f.read(reinterpret_cast<char*>(data), sizeof(data));
-    if (f.gcount() != std::streamsize(sizeof(data))) return false;
+    if (!file_read_at(ffxi + d.path, std::uint64_t(icon_offset(item_id, d)), data, sizeof(data))) return false;
     icon_from_record(data, out);
     return true;
 }
@@ -238,8 +228,7 @@ bool IconDatReader::read(std::string const& ffxi_dir, int item_id, uint32_t out[
     IconDat const& d = kIconDats[di];
     if (!h[di]) {
         // shared for read, write and delete: an open handle never stands in anyone's way
-        HANDLE const f = CreateFileA((ffxi + d.path).c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-                                     nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+        HANDLE const f = static_cast<HANDLE>(file_open(ffxi + d.path));
         if (f == INVALID_HANDLE_VALUE) return false;
         h[di] = f;
     }

@@ -1563,7 +1563,9 @@ int __cdecl l_wintype(lua_State* L) {
     auto* fresh = new Assets();
     bool const pixels = !hit;
     long long const d0 = qpc();
-    if (!fresh->load(g_ffxi, int(n), 39542, pixels) || !fresh->have_window) {
+    // 1.2.10: the window art no longer has to be there (ui.cpp draws a plain frame without it), so
+    // a type whose DAT cannot be read is still switched to rather than refused
+    if (!fresh->load(g_ffxi, int(n), 39542, pixels)) {
         std::string const msg = "wintype: assets missing: " + fresh->log;
         delete fresh;
         nc_release(held);

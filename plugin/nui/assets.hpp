@@ -64,7 +64,10 @@ struct Assets {
 
     // ffxi_dir ends with a backslash; window_type 1-8. want_pixels false: everything but the atlas
     // pixels (fonts' widths and glyph table, the frame recipe; atlas stays empty), for a module that
-    // finds the atlas in the shared cache (cache.hpp)
+    // finds the atlas in the shared cache (cache.hpp).
+    // True once the text font is there, which is the floor: everything else falls back (built-in
+    // advance widths, a plain frame for missing window art, a flat bar for a missing gauge), and
+    // `log` names each piece that is missing, why, and the folder it was read from.
     bool load(std::string const& ffxi_dir, int window_type, unsigned menu_fid = 39542, bool want_pixels = true);
     // the title font can be drawn: its glyphs were read and 'M' has a height (review REND-9)
     bool title_ok() const { return have_title && title['M' - 0x20].lh > 0; }
