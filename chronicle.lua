@@ -61,9 +61,14 @@ local screens = {
     area = require('ui/screens/area'),
     guide = require('ui/screens/guide'),
     settings = require('ui/screens/settings'),
+    -- Records of Eminence: one level deeper than the other two tabs
+    rcat = require('ui/screens/rcat'),
+    rsub = require('ui/screens/rsub'),
+    robj = require('ui/screens/robj'),
 }
 local pages = require('core/pages')
 local progress = require('core/progress')
+local roe = require('core/roe')
 
 local function char_name()
     local p = windower.ffxi.get_player()
@@ -85,6 +90,8 @@ local defaults = {
     wintype = 0,            -- 0 follows the game's Config, 1-8 pins a type
     sort_mode = 1,
     filter_mode = 1,
+    roe_sort_mode = 1,
+    roe_filter_mode = 1,
     active_tab = 'mission',
     show_uncompletable = false,
     share_textures = true,  -- false: keep this addon's own textures (start 'noshare'), not the shared cache
@@ -122,6 +129,11 @@ app.short = ident.short
 app.say = say
 app.check_requirements = wiki.check_requirements
 data.set_show_uncompletable(settings.show_uncompletable)
+
+-- Records of Eminence: the client's own catalogue (roe/), read on first use, plus the live
+-- state of packets 0x110 / 0x111 / 0x112
+roe.attach(HERE)
+app.roe = roe
 
 -- quest step progress: observed read-only, kept per character in data/progress/
 app.progress = progress
@@ -362,6 +374,14 @@ windower.register_event('incoming chunk', function(id, original)
         progress.on_zonein(original)
         return
     end
+    if id == 0x110 or id == 0x111 or id == 0x112 or id == 0x061 then
+        local ok, changed = pcall(roe.on_packet, id, original)
+        if ok and changed and win and win.visible and app.settings.active_tab == 'records' then
+            win:invalidate('all')
+            win:flush()
+        end
+        return
+    end
     if id == 0x055 then
         progress.on_0x055(original)
         app:requirements_changed()
@@ -398,11 +418,17 @@ windower.register_event('add item', function(bag, index, id, count)
     end, 1)
 end)
 
-windower.register_event('zone change', function() data.on_zone_change() end)
+windower.register_event('zone change', function(new_id)
+    data.on_zone_change()
+    roe.on_zone(new_id)
+end)
 
 windower.register_event('login', function(name)
     data.on_login(name)
     progress.on_login(name)
+    roe.reset()
+    local info = windower.ffxi.get_info()
+    roe.on_zone(info and info.zone)
     -- the new character's settings (review LIFE-6: a settings.xml that failed to load is tried again)
     if settings_ok then
         if not pcall(config.reload, settings) then say('data/settings.xml unreadable, settings kept', 167) end
@@ -428,6 +454,7 @@ windower.register_event('login', function(name)
 end)
 
 windower.register_event('logout', function()
+    roe.reset()
     progress.flush()
     save_place()
     data.on_logout()

@@ -215,6 +215,14 @@ end
 
 function roe.has_live_data() return state.bits:complete() end
 
+-- A different character has different records: nothing survives a login or a logout.
+function roe.reset()
+    state.sparks, state.deeds, state.bytes, state.unity = nil, nil, nil, nil
+    state.act, state.kind, state.slots, state.zones = {}, {}, {}, {}
+    state.bits:reset()
+    dirty()
+end
+
 ---------------------------------------------------------------------------
 -- visibility gates
 ---------------------------------------------------------------------------
@@ -401,11 +409,15 @@ function roe.in_progress()
     local out = {}
     for _, s in ipairs(state.slots) do
         if s.kind == 'active' or s.kind == 'extra' or s.kind == 'limited' then
-            local name = ix.name[s.id]
-            local goal = ix.goal[s.id] or 1
+            -- a slot can hold a record that is in no menu category (a rotation pool member, or
+            -- the limited-time challenge): the index names those too, and the row then says
+            -- what it is even though there is no list to open it from
+            local x = ix.extra and ix.extra[s.id]
+            local name = ix.name[s.id] or (x and x[1])
+            local goal = ix.goal[s.id] or (x and x[2]) or 1
             out[#out + 1] = {id = s.id, name = name or ('Record ' .. s.id), goal = goal,
                              count = s.count, limited = s.kind == 'limited', slot = s.slot,
-                             known = name ~= nil,
+                             known = ix.name[s.id] ~= nil,
                              frac = goal > 1 and s.count / goal or 0}
         end
     end

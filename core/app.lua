@@ -15,6 +15,12 @@ App.__index = App
 App.SORTS = {'Default', 'Name', 'Status', 'Location'}
 App.FILTERS = {'All', 'Completed', 'Active', 'Uncompleted', 'Uncompletable'}
 
+-- Records has no starting NPC to sort by and a reward worth sorting by, and its fifth state is
+-- "the client would not offer this yet", not "you can never finish it", so it has its own two
+-- lists and its own saved choice.
+App.ROE_SORTS = {'Default', 'Name', 'Status', 'Reward'}
+App.ROE_FILTERS = {'All', 'Completed', 'Active', 'Uncompleted', 'Locked'}
+
 App.SUBTITLES = {
     sandoria = 'Kingdom of the Elvaan', bastok = 'Republic of Humes',
     windurst = 'Federation of Tarutaru & Mithra', jeuno = 'Grand Duchy of Jeuno',
@@ -83,12 +89,122 @@ function App:entry(cat, area, name, id)
     if self.on_change then self.on_change(0) end
 end
 
+---------------------------------------------------------------------------
+-- Records of Eminence: a third tab, one level deeper than the other two
+-- (Home > Category > Sub-category > Objective)
+---------------------------------------------------------------------------
+
+function App:roe_cat(ci, scroll)
+    self.stack = {{name = 'home', params = {}, scroll = 0}}
+    self.view = {name = 'rcat', params = {ci = ci}}
+    if self.on_change then self.on_change(scroll or 0) end
+end
+
+function App:roe_sub(ci, si, scroll)
+    self.stack = {{name = 'home', params = {}, scroll = 0},
+                  {name = 'rcat', params = {ci = ci}, scroll = 0}}
+    self.view = {name = 'rsub', params = {ci = ci, si = si}}
+    if self.on_change then self.on_change(scroll or 0) end
+end
+
+-- An objective reached from anywhere (a card, the In progress list, a search): the stack is
+-- flattened to the path the tree gives it.
+function App:roe_objective(oid, scroll)
+    local ci, si = self.roe and self.roe.locate(oid)
+    if not ci then return false end
+    self.stack = {{name = 'home', params = {}, scroll = 0},
+                  {name = 'rcat', params = {ci = ci}, scroll = 0},
+                  {name = 'rsub', params = {ci = ci, si = si}, scroll = 0}}
+    self.view = {name = 'robj', params = {ci = ci, si = si, id = oid}}
+    if self.on_change then self.on_change(scroll or 0) end
+    return true
+end
+
+function App:roe_sort() return self.settings.roe_sort_mode or 1 end
+function App:roe_filter()
+    local f = self.settings.roe_filter_mode or 1
+    if f > #App.ROE_FILTERS then f = 1 end
+    return f
+end
+
+-- The objective list of one sub-category, through the same pipeline as a quest area's: filter,
+-- search, sort. A locked objective is never hidden by the filter the way an uncompletable quest
+-- is -- the client hides those and Chronicle's reason for existing is to show what is coming.
+function App:roe_items(ci, si)
+    local roe = self.roe
+    local ix = roe and roe.index()
+    local sub = ix and ix.cats[ci] and ix.cats[ci].subs[si]
+    if not sub then return {}, nil end
+    local data = roe.cat_data(ci) or {}
+    local items = {}
+    for _, oid in ipairs(sub.o) do
+        local e = data[oid] or {}
+        local status = roe.status(oid)
+        local goal = ix.goal[oid] or 1
+        items[#items + 1] = {
+            id = oid, name = ix.name[oid] or ('Record ' .. oid), status = status,
+            goal = goal, count = roe.progress(oid), repeatable = ix.rep[oid] == true,
+            wrap = e.w, wrap_name = e.wn, desc = e.d,
+            reward = (e.s or 0) + (e.x or 0) / 10 + (e.c or 0) / 10 + (e.a or 0),
+        }
+    end
+    local function keep(fn)
+        local out = {}
+        for _, it in ipairs(items) do if fn(it) then out[#out + 1] = it end end
+        items = out
+    end
+    local f = self:roe_filter()
+    if f == 2 then keep(function(it) return it.status == 'completed' or it.status == 'repeat' end)
+    elseif f == 3 then keep(function(it) return it.status == 'active' or it.status == 'repeat' end)
+    elseif f == 4 then keep(function(it) return it.status == 'not_started' or it.status == 'active' end)
+    elseif f == 5 then keep(function(it) return it.status == 'locked' end) end
+    if self.search ~= '' then
+        local needle = self.search:lower()
+        keep(function(it)
+            return it.name:lower():find(needle, 1, true) ~= nil
+                or (it.desc and it.desc:lower():find(needle, 1, true) ~= nil)
+        end)
+    end
+    local sort = self:roe_sort()
+    if sort == 2 then
+        table.sort(items, function(a, b) return a.name:lower() < b.name:lower() end)
+    elseif sort == 3 then
+        local pr = {active = 1, ['repeat'] = 2, not_started = 3, locked = 4, completed = 5}
+        table.sort(items, function(a, b)
+            local pa, pb = pr[a.status] or 9, pr[b.status] or 9
+            if pa ~= pb then return pa < pb end
+            return a.name:lower() < b.name:lower()
+        end)
+    elseif sort == 4 then
+        table.sort(items, function(a, b)
+            if a.reward ~= b.reward then return a.reward > b.reward end
+            return a.name:lower() < b.name:lower()
+        end)
+    end
+    return items, sub
+end
+
 -- breadcrumbs for the current view: {{label, go = function}}
 function App:crumbs()
     local v, p = self.view, self.view.params
     local out = {{label = 'Home', go = function() self:home() end}}
     if v.name == 'settings' then
         out[#out + 1] = {label = 'Settings'}
+        return out
+    end
+    if v.name == 'rcat' or v.name == 'rsub' or v.name == 'robj' then
+        local ix = self.roe and self.roe.index()
+        local c = ix and ix.cats[p.ci]
+        out[#out + 1] = {label = c and c.n or '?', go = function() self:roe_cat(p.ci) end}
+        if v.name ~= 'rcat' then
+            local s = c and c.subs[p.si]
+            local lead = {label = s and s.n or '?'}
+            if v.name == 'robj' then lead.go = function() self:roe_sub(p.ci, p.si) end end
+            out[#out + 1] = lead
+        end
+        if v.name == 'robj' then
+            out[#out + 1] = {label = ix and ix.name[p.id] or '?'}
+        end
         return out
     end
     if v.name == 'area' or v.name == 'guide' then

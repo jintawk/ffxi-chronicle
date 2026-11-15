@@ -28,6 +28,9 @@ local C = {
     -- status
     completed = {140, 226, 150}, active = {255, 205, 120}, ['repeat'] = {118, 232, 232},
     not_started = {150, 160, 178}, uncompletable = {255, 160, 90}, unknown = {255, 118, 106},
+    -- a Records objective the client would not offer yet: the same orange as uncompletable,
+    -- because it is the same thing to the eye -- not something you can do right now
+    locked = {255, 160, 90},
     -- completion tiers (v1's: red < 25, cyan < 75, green < 100, gold at 100)
     tier_low = {255, 118, 106}, tier_mid = {118, 214, 232}, tier_high = {140, 226, 150}, tier_full = {255, 214, 92},
 }
@@ -192,13 +195,63 @@ function kit.row(b, x, y, w, n, item, hover)
     if hover then b:rect(x, y, x + w, y + h - 2, C.hover)
     elseif n % 2 == 0 then b:rect(x, y, x + w, y + h - 2, C.stripe) end
     kit.mark(b, x + 8, y + 5, item.status)
-    local done = item.status == 'completed' or item.status == 'uncompletable'
-    local name = fit(item.name, w - 40 - (item.badge and text_w(item.badge) + 16 or 0))
+    local done = item.status == 'completed' or item.status == 'uncompletable' or item.status == 'locked'
+    local right = item.badge and text_w(item.badge) + 16 or 0
+    local name = fit(item.name, w - 40 - right)
     b:text(x + 26, y + 1, hover and C.gold or (done and C.dim or C.bold), name)
-    if item.sub then b:text(x + 26, y + 18, C.faint, fit(item.sub, w - 34)) end
+    if item.sub then b:text(x + 26, y + 18, C.faint, fit(item.sub, w - 34 - right)) end
     if item.badge then
         local bw = text_w(item.badge)
-        b:text(x + w - bw - 8, y + 1, C[item.status] or C.dim, item.badge)
+        b:text(x + w - bw - 8, y + 1, item.badge_col or C[item.status] or C.dim, item.badge)
+        -- a counter the server is reporting: its bar under the count
+        if item.bar then
+            local gw = math.max(40, math.min(76, bw))
+            b:gauge(x + w - 8 - gw, y + 21, gw, 6, math.max(0, math.min(1, item.bar)),
+                    item.badge_col or C[item.status] or C.active)
+        end
+    end
+end
+
+-- The middle level of the Records tab: one row per sub-category, carrying what is inside it.
+-- Denser than a card grid, which matters because a category holds up to 21 of them, and visibly
+-- a different kind of screen from the cards above it.
+kit.SUBROW_H = 42
+kit.SUBROW_GAUGE, kit.SUBROW_PCT = 80, 42
+function kit.subrow(b, x, y, w, n, s, hover)
+    local h = kit.SUBROW_H
+    if hover then b:rect(x, y, x + w, y + h - 2, C.hover)
+    elseif n % 2 == 0 then b:rect(x, y, x + w, y + h - 2, C.stripe) end
+    local pct = kit.pct(s.completed, s.total)
+    local ps = s.has_data and (pct .. '%') or '--'
+    local col = s.has_data and kit.tier(pct) or C.faint
+    -- right to left: the percentage, then the gauge with its count under it
+    local xr = x + w - 8
+    b:text(xr - text_w(ps), y + 6, col, ps)
+    xr = xr - math.max(kit.SUBROW_PCT, text_w(ps) + 8)
+    local gw = kit.SUBROW_GAUGE
+    local cs = s.has_data and (s.completed .. ' / ' .. s.total) or (s.pool .. ' records')
+    if w > 320 then
+        b:gauge(xr - gw, y + 7, gw, 6, s.has_data and s.total > 0 and s.completed / s.total or 0, col)
+        b:text(xr - gw + math.max(0, gw - text_w(cs)), y + 19, C.dim, cs)
+        xr = xr - gw - 12
+    else
+        b:text(xr - text_w(cs), y + 12, C.dim, cs)
+        xr = xr - text_w(cs) - 12
+    end
+    local name = fit(s.name, xr - x - 10)
+    b:text(x + 8, y + 3, hover and C.gold or C.bold, name)
+    -- the client's own sub-category names say nothing ("Job Levels 1", "Quests 1"); the line
+    -- under the name is derived from the objectives inside and is what makes this level usable
+    local hint = s.hint or ''
+    if s.active and s.active > 0 then
+        local lead = hint ~= '' and (hint .. '  ') or ''
+        local tail = s.active .. ' active'
+        local room = xr - x - 10
+        lead = fit(lead, math.max(0, room - text_w(tail) - 4))
+        b:text(x + 8, y + 21, C.faint, lead)
+        b:text(x + 8 + text_w(lead), y + 21, C.active, tail)
+    elseif hint ~= '' then
+        b:text(x + 8, y + 21, C.faint, fit(hint, xr - x - 10))
     end
 end
 
