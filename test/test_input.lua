@@ -283,6 +283,34 @@ do
     check('UI-2: a normal break unchanged', table.concat(plain) == 'abcdefghijklmnop' and #plain >= 2)
 end
 
+---------------------------------------------------------------------------------------------------------------------------
+-- 2.0.2: a piece of the game's art that could not be read is never silent. Drawing no longer needs all of
+-- it (nui 1.2.10 draws a plain panel without the window frame), so a start that succeeds with something
+-- missing has to say so, with the file and the reason, once a session and not on every start.
+do
+    local log = 'widths from FFXiMain.dll; window art missing (ROM\\0\\19.DAT: newtex 256x256 not 128x128); '
+        .. 'moji; window title font; title font; gauge; in C:\\FFXI\\'
+    local env = H.load({settings = {visible_on_load = true}, fake = {assets = log}})
+    check('ASSETS: a missing piece is said', chat_has(env, 'drawing without some of the game art'))
+    check('ASSETS: the file is named', chat_has(env, '19.DAT'))
+    check('ASSETS: the reason is named', chat_has(env, '256x256 not 128x128'))
+    check('ASSETS: where to report is named', chat_has(env, 'ffxi-chronicle/issues'))
+    local n = 0
+    for _, l in ipairs(env.chat) do if l:find('drawing without', 1, true) then n = n + 1 end end
+    env.cmd('hide') env.cmd('show')
+    local n2 = 0
+    for _, l in ipairs(env.chat) do if l:find('drawing without', 1, true) then n2 = n2 + 1 end end
+    check('ASSETS: said once, not on every start', n == 1 and n2 == 1, n .. '/' .. n2)
+end
+do
+    local clean = 'widths from FFXiMain.dll; window type 6 + win00 recipe; moji; window title font; title font; gauge'
+    local env = H.load({settings = {visible_on_load = true}, fake = {assets = clean}})
+    check('ASSETS: nothing said when every piece loaded', not chat_has(env, 'drawing without'))
+    check('ASSETS: and no report line either', not chat_has(env, 'ffxi-chronicle/issues'))
+    env.cmd('status')
+    check('ASSETS: status reports the art either way', chat_has(env, 'game art: '))
+end
+
 restore()
 ---------------------------------------------------------------------------------------------------------------------------
 -- the run wrote only into its own data folder: the player's data/ is exactly as it was (a killed run or two runs at once can lose

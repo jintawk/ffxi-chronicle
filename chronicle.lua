@@ -177,6 +177,7 @@ app.on_change = show_screen
 -- never comes back, and each try stalls the game). Said once when it starts waiting; a command that shows the window starts over.
 local RETRY_AFTER = {nil, 30, 120}         -- [1] is the DLL's own retry_s
 local retry = {at = nil, said = false, show = false, n = 0}
+local said_assets = false         -- the art warning below is said once a session, not every start
 
 local function start(again)
     if win then return true end
@@ -202,6 +203,18 @@ local function start(again)
     if retry.said then say('hooked') end
     retry.at, retry.said, retry.n = nil, false, 0
     retry.flags = flags
+    -- Drawing no longer needs every piece of the game's art: without the window frame Chronicle
+    -- draws a plain panel, without the gauge a flat bar. Say so, once, with the file and the
+    -- reason, so a piece that could not be read is never silent and the line goes into an issue.
+    if not said_assets then
+        local st = nui.N.status()
+        local a = type(st) == 'table' and st.assets
+        if type(a) == 'string' and a:find('missing', 1, true) then
+            said_assets = true
+            say('drawing without some of the game art: ' .. a, 167)
+            say('please report that line at ' .. ident.issues, 167)
+        end
+    end
     ops.set_metrics(nui.N.metrics())
     if settings.wintype and settings.wintype > 0 then nui.pin_type(settings.wintype) else nui.pin_type(nil) end
     win = Window.new(nui.N, {app = app, on_place = save_place})
@@ -441,6 +454,11 @@ local function status()
     say(('%s %s | %s | hook %s | clients %s, installs %s'):format(s.version, s.running and 'running' or 'stopped',
         s.message, s.hook, tostring(s.clients), tostring(s.installs)))
     say(('UiHook %s | driver rev %s'):format(tostring(s.describe), tostring(s.owner_rev)))
+    -- the game's own art, and what of it could not be read: the one line a report needs
+    if type(s.assets) == 'string' and s.assets ~= '' then
+        say('game art: ' .. s.assets, s.assets:find('missing', 1, true) and 167 or 207)
+        if s.assets:find('missing', 1, true) then say('please report that line at ' .. ident.issues, 167) end
+    end
     say(('draw %.0f us (max %.0f) | layers %d, %d quads, %d batches | build %.0f us | uploads %d'):format(
         s.last_us, s.max_us, s.layers, s.quads, s.batches, s.build_us, s.uploads))
     say(('textures %d KB, CPU pixels %d KB, vertices %d KB, pictures %d'):format(s.texture_kb, s.cpu_pixels_kb,

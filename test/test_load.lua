@@ -31,7 +31,7 @@ for _, f in ipairs({'version', 'start', 'stop', 'status', 'screen', 'layer', 'la
                     'icon', 'icon_pixels', 'metrics', 'wintype', 'wtfind', 'wtwatch', 'wtread'}) do
     check('function ' .. f, type(N[f]) == 'function')
 end
-check('version', N.version() == '2.0.1', N.version())
+check('version', N.version() == '2.0.2', N.version())
 
 -- fails closed without the game
 local good, msg = N.start()
