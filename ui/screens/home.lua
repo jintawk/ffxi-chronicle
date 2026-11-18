@@ -63,29 +63,10 @@ function S.chrome(b, ctx)
         b:quad(t.h, x1 - pw - 34 - ops.text_w(cs), y, x1 - pw - 18 - ops.text_w(cs), y + 16, 0, 0, t.w, t.h_px, C.tier_full, 1)
     end
     b:gauge(x0, y + 24, x1 - x0, 8, total > 0 and done / total or 0, kit.tier(pct))
-    y = y + 44
-    -- Records: what the Sparks packet carries, which is also the quickest way to see that it is
-    -- being read correctly -- the numbers are the ones the game's own menu shows
-    if cat_of(app) == 'records' then
-        local st = app.roe and app.roe.state
-        if st and st.sparks then
-            local lead = 'Sparks'
-            b:text(x0, y - 4, C.dim, lead)
-            b:text(x0 + ops.text_w(lead) + 8, y - 4, C.item, S.thousands(st.sparks))
-            local ds = 'Deeds ' .. S.thousands(st.deeds or 0)
-            b:text(x1 - ops.text_w(ds), y - 4, C.dim, ds)
-            y = y + 18
-        end
-    end
-    return {x0 = x0, y0 = y, x1 = x1, y1 = ctx.h - 18}, common.TOP + 30
-end
-
--- 99999 -> "99,999"
-function S.thousands(n)
-    local out = tostring(math.floor(n or 0))
-    local k
-    repeat out, k = out:gsub('^(%-?%d+)(%d%d%d)', '%1,%2') until k == 0
-    return out
+    -- Sparks and Deeds are not drawn: Chronicle is read for completion and walkthroughs, and a
+    -- currency the game's own menu already shows is not that. 0x110 is still parsed, for the
+    -- Unity and gate bytes the visibility rules need (core/roe.lua).
+    return {x0 = x0, y0 = y + 44, x1 = x1, y1 = ctx.h - 18}, common.TOP + 30
 end
 
 function S.content(b, ctx)
