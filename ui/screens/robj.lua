@@ -153,8 +153,8 @@ function S.content(b, ctx)
     if unk then
         for _, g in ipairs(unk) do
             if g.kind == 'zone' then
-                y = kv(b, w, y, 'Needs', 'a visit to ' .. (g.name or ('zone ' .. tostring(g.id)))
-                       .. (roe.state.zones[g.id] and ' (seen this session)' or ''), C.zone)
+                y = kv(b, w, y, 'Needs', 'a visit to '
+                       .. (g.name or ('zone ' .. tostring(g.id))), C.zone)
             end
         end
     end
