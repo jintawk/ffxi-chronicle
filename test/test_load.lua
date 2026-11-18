@@ -31,6 +31,7 @@ for _, f in ipairs({'version', 'start', 'stop', 'status', 'screen', 'layer', 'la
                     'icon', 'icon_pixels', 'metrics', 'wintype', 'wtfind', 'wtwatch', 'wtread'}) do
     check('function ' .. f, type(N[f]) == 'function')
 end
+-- the drawing layer's own version, which moves when the drawing does, not with the addon's
 check('version', N.version() == '2.0.2', N.version())
 
 -- fails closed without the game

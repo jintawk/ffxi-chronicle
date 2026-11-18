@@ -478,7 +478,10 @@ end)
 local function status()
     if not nui.N then say('_chronicle.dll did not load: ' .. tostring(nui.error), 167) return end
     local s = nui.N.status()
-    say(('%s %s | %s | hook %s | clients %s, installs %s'):format(s.version, s.running and 'running' or 'stopped',
+    -- the addon's version and the drawing layer's are separate: the DLL only moves when the
+    -- drawing does, so they are both named rather than assumed equal
+    say(('%s | _chronicle.dll %s %s | %s | hook %s | clients %s, installs %s'):format(ident.version,
+        s.version, s.running and 'running' or 'stopped',
         s.message, s.hook, tostring(s.clients), tostring(s.installs)))
     say(('UiHook %s | driver rev %s'):format(tostring(s.describe), tostring(s.owner_rev)))
     -- the game's own art, and what of it could not be read: the one line a report needs
