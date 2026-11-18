@@ -6,8 +6,8 @@
     count while the objective is in one of your slots.
 
     About one in six wraps a quest or mission Chronicle already documents ("San d'Oria Rank 1-1"
-    is "Smash the Orcish Scouts"). Those get a link into that entry, which carries its
-    walkthrough and its step progress; nothing is written here for them.
+    is "Smash the Orcish Scouts"). Those get a Walkthrough section: a link into that entry and
+    that entry's own step progress. The others have no such section at all.
 
     An objective the client would not offer yet says what unlocks it, by name, because the thing
     that unlocks it is another record and the client ships every record's name.
@@ -118,27 +118,19 @@ function S.content(b, ctx)
         y = y + 8
     end
 
-    -- progress: the server's exact count while the objective is slotted, and nothing claimed
-    -- when it is not, because no packet carries a count for an objective you do not have set
-    if o.goal > 1 then
+    -- progress: the server's exact count, which exists only while the objective is slotted. With
+    -- no count there is no section: the goal is under Details as Required.
+    local count = o.goal > 1 and roe.progress(p.id) or nil
+    if count then
         y = heading(b, w, y + 4, 'Progress')
-        local count = roe.progress(p.id)
-        if count then
-            local cs = num(count)
-            local gs = ' / ' .. num(o.goal)
-            local cw = ops.title_w(cs, 18)
-            b:text(0, y + 4, C.dim, 'Counted by the server')
-            b:title(w - cw - ops.text_w(gs), y, 18, C.active, cs)
-            b:text(w - ops.text_w(gs), y + 4, C.dim, gs)
-            y = y + 24
-            b:gauge(0, y, w, 7, math.max(0, math.min(1, count / o.goal)), C.active)
-            y = y + 16
-        else
-            y = para(b, w, y, 'Needs ' .. num(o.goal) ..
-                     '. The server reports a count only for the records you have set, so there is '
-                     .. 'none to show here.', C.faint)
-            y = y + 4
-        end
+        local cs = num(count)
+        local gs = ' / ' .. num(o.goal)
+        local cw = ops.title_w(cs, 18)
+        b:title(w - cw - ops.text_w(gs), y, 18, C.active, cs)
+        b:text(w - ops.text_w(gs), y + 4, C.dim, gs)
+        y = y + 24
+        b:gauge(0, y, w, 7, math.max(0, math.min(1, count / o.goal)), C.active)
+        y = y + 16
     end
 
     -- details
@@ -168,46 +160,46 @@ function S.content(b, ctx)
     end
     y = y + 10
 
-    -- the walkthrough: a link when the objective wraps an entry Chronicle documents
-    y = heading(b, w, y, 'Walkthrough')
+    -- the walkthrough: a link when the objective wraps an entry Chronicle documents. Most
+    -- objectives wrap nothing and the description above is the whole record, so the section is
+    -- not drawn at all rather than drawn empty.
     if o.wrap then
+        y = heading(b, w, y, 'Walkthrough')
         local cat, area, id = o.wrap:match('^([^|]+)|([^|]+)|(%-?%d+)$')
         id = tonumber(id)
         local label = (cat == 'mission' and 'Mission' or 'Quest') .. ': ' .. (o.wrap_name or '?')
         local h = 26
         b:rect(0, y, w, y + h, C.well)
         kit.frame(b, 0, y, w, y + h, C.edge)
-        b:text(8, y + 4, C.npc, ops.fit(label, w - 100))
-        local open = 'open in Chronicle'
-        b:text(w - 8 - ops.text_w(open), y + 4, C.faint, open)
+        -- the linked entry's own step progress, on the row that opens it
+        local steps = app:step_summary(cat, area, id)
+        local right = w - 8
+        if steps then
+            local cs = steps.done .. ' / ' .. steps.total
+            right = right - ops.text_w(cs)
+            b:text(right, y + 4, C.active, cs)
+            local sw = kit.seg_w(steps.total, math.floor(w * 0.4), 9, 2)
+            if sw then
+                right = right - 10 - (steps.total * (sw + 2) - 2)
+                for k, st in ipairs(steps.states) do
+                    kit.step_seg(b, right + (k - 1) * (sw + 2), y + 4, sw, st)
+                end
+            end
+        else                                  -- no steps mapped: the row still has to read as a link
+            local open = 'open in Chronicle'
+            right = right - ops.text_w(open)
+            b:text(right, y + 4, C.faint, open)
+        end
+        b:text(8, y + 4, C.npc, ops.fit(label, right - 18))
         b:hit({x0 = 0, y0 = y, x1 = w, y1 = y + h, id = 'xlink', cat = cat, area = area,
                entry = id, name = o.wrap_name})
         y = y + h + 6
-        local steps = app:step_summary(cat, area, id)
-        if steps then
-            local cs = steps.done .. ' / ' .. steps.total
-            b:text(w - ops.text_w(cs), y + 1, C.active, cs)
-            local sw = kit.seg_w(steps.total, math.floor(w * 0.5), 9, 2)
-            if sw then
-                local sx = w - ops.text_w(cs) - 10 - (steps.total * (sw + 2) - 2)
-                for k, st in ipairs(steps.states) do
-                    kit.step_seg(b, sx + (k - 1) * (sw + 2), y + 1, sw, st)
-                end
-            end
-            b:text(0, y + 1, C.dim, 'Steps')
-            y = y + 20
-            if steps.text then
-                local lead = 'Next: '
-                b:text(0, y, C.active, lead)
-                b:text(ops.text_w(lead), y, C.text, ops.fit_words(steps.text, w - ops.text_w(lead)))
-                y = y + kit.LINE
-            end
+        if steps and steps.text then
+            local lead = 'Next: '
+            b:text(0, y, C.active, lead)
+            b:text(ops.text_w(lead), y, C.text, ops.fit_words(steps.text, w - ops.text_w(lead)))
+            y = y + kit.LINE
         end
-        y = para(b, w, y + 2,
-                 'The steps are the linked entry\'s own; nothing is written here for this record.',
-                 C.faint)
-    else
-        y = para(b, w, y, 'None needed. The description above is the whole record.', C.faint)
     end
     return y + 10
 end
