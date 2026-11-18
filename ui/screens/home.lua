@@ -69,8 +69,9 @@ function S.chrome(b, ctx)
     if cat_of(app) == 'records' then
         local st = app.roe and app.roe.state
         if st and st.sparks then
-            b:text(x0, y - 4, C.dim, 'Sparks')
-            b:text(x0 + 52, y - 4, C.item, S.thousands(st.sparks))
+            local lead = 'Sparks'
+            b:text(x0, y - 4, C.dim, lead)
+            b:text(x0 + ops.text_w(lead) + 8, y - 4, C.item, S.thousands(st.sparks))
             local ds = 'Deeds ' .. S.thousands(st.deeds or 0)
             b:text(x1 - ops.text_w(ds), y - 4, C.dim, ds)
             y = y + 18
