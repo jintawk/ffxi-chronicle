@@ -506,375 +506,375 @@
 "pages": {
 "quest|bastok|0": {
 "lua": "e8601361d678799a0f5a50f17fba41298d0e260d",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|1": {
 "lua": "606676116f07a52a6082841f225b0aa6f5815cc0",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|10": {
 "lua": "0fe78c25243ee133d9e0d158ab1552514e19e33c",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|11": {
 "lua": "eaf10052119d566bfa35f1e8a3f04c9f77221cf4",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|12": {
 "lua": "a85e7e50372edca2394110c97b9b823ecfc37f50",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|13": {
 "lua": "3b2233c67cad4d5f48b1f2eab90d35e65d0e1ff5",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|14": {
 "lua": "17a038f34b60f50beeab479d10b9012fd0cce76c",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|15": {
 "lua": "553357f99ba04d2425ac2c0c2149d85316678628",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|16": {
 "lua": "097482c3195bab30e6f7fab41803a0cb81437589",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|17": {
 "lua": "6ca2724227cb82b8deef9953e5c40ae6acc9e768",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|18": {
 "lua": "01d73d7239c1cf28853ff1ec4a30e90227553e52",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|19": {
 "lua": "9c8759283383f5f22670fd738153cc58ccc30dbf",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|2": {
 "lua": "fdeb94f679be956be66fe679aced5b5b5d176db9",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|20": {
 "lua": "c0786c80a317af3c86e2cd861d5bad9be6e9f6ff",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|21": {
 "lua": "ab67fe604430c04597647545ac6313ac82bd6cdc",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|22": {
 "lua": "71fd3f38ffdb108d92546051de0c20f98ac85846",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|23": {
 "lua": "d483c4c10815da1336322e84c6e8bf91ff0d005f",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|24": {
 "lua": "2743dfec86f2a5edbeee0a78108b9408549476b2",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|25": {
 "lua": "1980c0caa64b1f47131d2c6d4df845169f5d6433",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|26": {
 "lua": "cd288cb849ae90249cf00861531f40c0e1c8ffe5",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|27": {
 "lua": "7e4b7c7ead4c80872623c0f90a81fb55faf5ac7e",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|28": {
 "lua": "d356add3a3814d38e2b4ac0e57bb81c6f30e0318",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|29": {
 "lua": "dd5ef06e378b4c570c6d512804a932cd67772afd",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|3": {
 "lua": "bfd72ca8444dcd936e432bda29df54c9f405c967",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|30": {
 "lua": "bb65106979f34b402add91cb4e4c43f3d87bac80",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|31": {
 "lua": "490b8f74ccbe0e6ee4f1853c02823a71865be4b1",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|32": {
 "lua": "daea19c1f770e6757b964711408cf6140b22cca5",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|33": {
 "lua": "5f7fff3adc0db0137d1691daef1aacc61005037e",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|34": {
 "lua": "386ec9f6f78dd98428a403e6e26e1cd1aca90e0e",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|35": {
 "lua": "30348b392a3ebb4247fa3e561651921c0e3ebef6",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|36": {
 "lua": "c8f524c12ce789648b549f6fcb2a7efe2c0dde03",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|37": {
 "lua": "99a76c8cf38283062c1c2fb543dc39144dd60bd1",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|38": {
 "lua": "c301f0b29292bf883b0c227860808cfd0c137802",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|39": {
 "lua": "104b04b50abbad5347e2f824827ca766dd432fe3",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|4": {
 "lua": "2245de70eea2dd1f601f8578d26516b53204fa47",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|40": {
 "lua": "02a1b487f483c19d0ab30614d916528c7e4467e9",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|41": {
 "lua": "0ae63ca71915614c385acb7115a781c778a70b72",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|42": {
 "lua": "b4beef08709c101d55ab0139468af7bfc19a1e70",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|43": {
 "lua": "1a8b7c485c2c5f66d534d1b17b99e4cc19d7eed3",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|44": {
 "lua": "68ed98c2b8e95b256d64440052c593b2e69afe33",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|45": {
 "lua": "6560dcbf48d162645b576ce1efe255717d8decc0",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|46": {
 "lua": "d0d3357e346fa24d14722555d817418dc3d17ccf",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|47": {
 "lua": "521c7c4e47f923e80b0704f4e7c83a14ea6fb0b0",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|48": {
 "lua": "3afb53bf876de7767aa45875329c024c825cf6f3",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|49": {
 "lua": "ff451a03b9ecc9896d53024c09dcdd7c0f217954",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|5": {
 "lua": "890b945f3084db9b43b599d89709e004d3b244ad",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|50": {
 "lua": "815e52848e6ec935b376922ff1ffde5dc85f0245",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|51": {
 "lua": "6bdd47f06ae93984d19fe15f3f8977b925a30eb7",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|52": {
 "lua": "9454d877ab9f6c907ab9d85713e783f2b272ae4d",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|53": {
 "lua": "539bc7c43af4e1f5cd13d70f25bb19d5ba1b739d",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|54": {
 "lua": "17ce3ed5d22afe9f95c869382b691f0b6b49a1a6",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|55": {
 "lua": "20b466d266da0183da97be5276a95ba9e994d593",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|56": {
 "lua": "0dd56396baa35532d15fcd509da1ffb3219ce8b8",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|57": {
 "lua": "641bc1c2c8d4d233a2420750fa979a53cb3ea97b",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|58": {
 "lua": "9050f53c28d73689bf43231f5579872b252bae37",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|59": {
 "lua": "e0cdc2e0866a94dae07a6a9e05138683b6eeab1c",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|6": {
 "lua": "ba500d50469ddebd7c6004c10f16827ba8c26ffb",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|60": {
 "lua": "b02b6a52ee8366de1dc89f6417f32893a0eea476",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|61": {
 "lua": "bf41478d5e3f7f4b4106a089745311a8315ce955",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|62": {
 "lua": "60d50d711e461735fbe4525ce443b25e8f71b463",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|63": {
 "lua": "7bcda827f88eee638595c084e58501e416fcbd02",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|64": {
 "lua": "c6f8dce6d7ce5202fc0dcc1dea5d04507fd3880d",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|65": {
 "lua": "aeb37b1028f3609f5951aeb111d9c30ce16329c1",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|66": {
 "lua": "cccb824d98d2251c8fcc96278c8c97c149a800a4",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|67": {
 "lua": "3316d8399056aea1a594edfd6ff1e806e8b91fc9",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|68": {
 "lua": "3f60014f206ec5df6af45c498be3476e22da791e",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|69": {
 "lua": "a93ed8bb9d40ccfd846300f22b3c7a1f9c1a57c1",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|7": {
 "lua": "5f6800f60207a87f5bdaedd61488841ab176b7df",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|70": {
 "lua": "a15c8e8c51fd320265ffc43e601ca3c931e2d853",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|71": {
 "lua": "8db2883e8dc8a75eb17f31652b0ff56a684aca7a",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|72": {
 "lua": "1ec209ec26b478eb8f339d9d640c1a0972405323",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|73": {
 "lua": "115161b9e0fee83cc7cbce74addf38b9e65708c3",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|74": {
 "lua": "fc0addf6b1b4716342cf6b151b400c11977a3819",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|75": {
 "lua": "afe901fd9a5ff9dc0318fe94e0915884dc473e9c",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|76": {
 "lua": "f3da841bf0300e12d44c4c1e19d68657f0930fa0",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|77": {
 "lua": "e13bb20d5166b31e915e8b63b7718c82a1e4899c",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|78": {
 "lua": "eb1acbd8cf69924ecde25970b6c23ef030908867",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|79": {
 "lua": "debb06f2d92da264da9982fab24a25cae0d44826",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|8": {
 "lua": "7a470f02aeac58ecdd88245a093fc03cdf5383b6",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|80": {
 "lua": "abaa005d31172a2970c58b6b272ece8aacc716cc",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|81": {
 "lua": "6934c13e071607d805e54005157971c10cfa5647",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|82": {
 "lua": "7403464f88b5947b7bd07bf89a819925091e9833",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|83": {
 "lua": "0b56a02d6a7504a3ff3d73cb4d37375113c6b5a5",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|84": {
 "lua": "547081660915d644c418310de01d12eb29c96098",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|85": {
 "lua": "0e63f5267c65f4f816668e44dfcf825a759d85e5",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|86": {
 "lua": "5182b9e26c530fae3d512d4b87a6478b164467ab",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|87": {
 "lua": "b8204511421c4f55b90a952f2c605447ddf88136",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|88": {
 "lua": "8d3c6bdeea3f583a278ea1bbf07b7521b74aab16",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|89": {
 "lua": "ebfe710b2dad39eb25c5d3ae680294dd2b212bf9",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|9": {
 "lua": "414881ac25213c3a56b41e6ef5c688e1a68cc4cc",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|90": {
 "lua": "3bb03c5436b669a85e2fad5121b2bbe81af4be36",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|91": {
 "lua": "9e34777b1ca12d793d392318c55700907f4fdba2",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 },
 "quest|bastok|92": {
 "lua": "745180381366a7a6eb97f42397dfc876633f3527",
-"in": "c6e4a9eb1fccec018575cb79b21fa941f63795db"
+"in": "8a50dabc4b3971bc67515b2bdd3f96de8e9adb0b"
 }
 }
 }
