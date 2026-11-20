@@ -67,9 +67,11 @@ end
 -- 0x111: the active objectives
 ---------------------------------------------------------------------------
 
--- All 64 slots, by what the client does with each (the window draws the first 30). The last is
--- the limited-time challenge; 'other' is the block whose purpose is not confirmed, carried so a
--- capture can settle it without a change here.
+-- All 64 slots, by what the client does with each, taken from the client's own list builders.
+-- The Current list is the limited-time challenge (slot 63), then the second special record
+-- (slot 42), then slots 0-29 in slot order. Slots 30-41 are counted when that list is sized but
+-- never written into it, so the game shows them nowhere; 43-52 are the window's other list.
+-- 'other' is the rest, carried so a capture can settle it without a change here.
 P.SLOTS = 64
 local function slot_kind(i)
     if i < 30 then return 'active' end

@@ -402,36 +402,44 @@ function roe.summary()
 end
 
 -- The objectives the server is counting right now: the 0x111 slots, each with the catalogue's
--- name and goal. Counters first, nearest to done first, then the rest.
+-- name and goal, in the order the game's own Current list puts them.
+--
+-- That order is the client's, read out of Ui_RoeWnd_BuildActiveList: the limited-time challenge
+-- first (slot 63), then the second special record (slot 42), then slots 0-29 in slot order,
+-- which is the order the records were accepted in. Slots 30-41 are counted when the client sizes
+-- the list but never written into it, so they appear in no list the game draws and none here.
+local RANK_LIMITED, RANK_SPECIAL = -2, -1
 function roe.in_progress()
     local ix = roe.index()
     if not ix then return {} end
     local out = {}
     for _, s in ipairs(state.slots) do
-        if s.kind == 'active' or s.kind == 'extra' or s.kind == 'limited' then
+        if s.kind == 'active' or s.kind == 'limited' or s.kind == 'special' then
             -- a slot can hold a record that is in no menu category (a rotation pool member, or
             -- the limited-time challenge): the index names those too, and the row then says
             -- what it is even though there is no list to open it from
             local x = ix.extra and ix.extra[s.id]
             local name = ix.name[s.id] or (x and x[1])
             local goal = ix.goal[s.id] or (x and x[2]) or 1
+            local rank = s.slot
+            if s.kind == 'limited' then rank = RANK_LIMITED
+            elseif s.kind == 'special' then rank = RANK_SPECIAL end
             out[#out + 1] = {id = s.id, name = name or ('Record ' .. s.id), goal = goal,
                              count = s.count, limited = s.kind == 'limited', slot = s.slot,
-                             known = ix.name[s.id] ~= nil,
-                             frac = goal > 1 and s.count / goal or 0}
+                             known = ix.name[s.id] ~= nil, rank = rank}
         end
     end
-    table.sort(out, function(a, b)
-        if a.frac ~= b.frac then return a.frac > b.frac end
-        return a.slot < b.slot
-    end)
+    table.sort(out, function(a, b) return a.rank < b.rank end)
     return out
 end
 
+-- The number the game prints beside its Current list, counted the way the client counts it in
+-- Ui_RoeWnd_DrawHeaderTitle: the filled slots of 0-29, plus one each for the limited-time
+-- challenge and the second special record, against a fixed 30.
 function roe.active_count()
     local n = 0
     for _, s in ipairs(state.slots) do
-        if s.kind == 'active' then n = n + 1 end
+        if s.kind == 'active' or s.kind == 'limited' or s.kind == 'special' then n = n + 1 end
     end
     return n
 end

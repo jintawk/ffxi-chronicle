@@ -72,10 +72,10 @@ local function heading(b, w, y, text)
     return y + kit.heading(b, 0, y, w, text)
 end
 
--- wrapped body text; -> the y under it
-local function para(b, w, y, text, col)
+-- wrapped body text, at an optional left inset; -> the y under it
+local function para(b, w, y, text, col, x)
     for _, line in ipairs(ops.wrap(text, w)) do
-        b:text(0, y, col or C.text, line)
+        b:text(x or 0, y, col or C.text, line)
         y = y + kit.LINE
     end
     return y
@@ -103,10 +103,12 @@ function S.content(b, ctx)
     local why = roe.locked(p.id)
     if why then
         local text = S.lock_text(app, why)
-        local h = kit.LINE * #ops.wrap(text, w - 20) + 10
+        -- the text sits inside the frame, not against it: the same inset on both sides
+        local pad = 8
+        local h = kit.LINE * #ops.wrap(text, w - pad * 2) + 10
         b:rect(0, y, w, y + h, C.well)
         kit.frame(b, 0, y, w, y + h, kit.alpha(C.locked, 110))
-        para(b, w - 20, y + 5, text, C.locked)
+        para(b, w - pad * 2, y + 5, text, C.locked, pad)
         y = y + h + 10
     end
 

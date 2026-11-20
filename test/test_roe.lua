@@ -477,6 +477,20 @@ local lim = roe.in_progress()
 check('a record in no menu category is still named', lim[1] and lim[1].name ~= 'Record 4018'
       and lim[1].known == false, lim[1] and lim[1].name)
 
+-- the game's own order (Ui_RoeWnd_BuildActiveList): the limited-time challenge, then the second
+-- special record, then slots 0-29 in slot order, which is the order they were accepted in
+roe.on_packet(0x111, pkt111({[0] = {16, 1}, [5] = {12, 1}, [2] = {57, 1},
+                             [35] = {3769, 1}, [42] = {11, 1}, [63] = {4018, 1}}))
+local order = roe.in_progress()
+local ids = {}
+for i, e in ipairs(order) do ids[i] = e.id end
+check('the limited-time challenge leads the list', ids[1] == 4018, ids[1])
+check('then the second special record', ids[2] == 11, ids[2])
+check('then the slots in slot order, not by progress', ids[3] == 16 and ids[4] == 57
+      and ids[5] == 12, table.concat(ids, ','))
+check('a slot the game draws nowhere is left out', #order == 5, #order)
+check('and the count is the one the game prints', roe.active_count() == 5, roe.active_count())
+
 ---------------------------------------------------------------------------
 -- 6. the screens
 ---------------------------------------------------------------------------
