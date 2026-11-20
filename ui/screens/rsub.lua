@@ -84,7 +84,7 @@ function S.content(b, ctx)
     end
     local y = 0
     for n, it in ipairs(items) do
-        local row = {name = it.name, status = it.status, sub = subtitle(it)}
+        local row = {name = it.name, status = it.status, sub = subtitle(it), rep = it.repeatable}
         if it.count and it.goal > 1 then
             row.badge = it.count .. ' / ' .. it.goal
             row.bar = it.count / it.goal

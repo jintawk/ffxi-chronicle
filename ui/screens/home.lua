@@ -189,8 +189,9 @@ function S.records_active(b, app, roe, y, w)
     local cw = ops.text_w(cs)
     b:text(w - cw, y + 2, C.faint, cs)
     y = y + kit.heading(b, 0, y, w - cw - 10, 'In progress')
+    local ix = roe.index()
     for i, e in ipairs(list) do
-        local it = {name = e.name, status = roe.status(e.id)}
+        local it = {name = e.name, status = roe.status(e.id), rep = ix and ix.rep[e.id] == true}
         if e.goal > 1 then
             it.badge = e.count .. ' / ' .. e.goal
             it.bar = e.count / e.goal

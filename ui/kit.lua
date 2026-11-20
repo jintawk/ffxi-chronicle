@@ -141,9 +141,13 @@ function kit.input(b, x, y, w, text, placeholder, focused, caret, hover)
     return b:hit({x0 = x, y0 = y, x1 = x + w, y1 = y + h, id = 'search'})
 end
 
--- a small status mark: a filled square in the status colour (hollow when not started)
-function kit.mark(b, x, y, status)
+-- A small status mark: a filled square in the status colour (hollow when not started). A repeatable
+-- record carries a second square behind it, offset up and to the right, so the shape says there is
+-- another one after this one. Shape, not colour: the five status colours are already spoken for,
+-- and repeatable is a property of the record, not a sixth state it can be in.
+function kit.mark(b, x, y, status, rep)
     local col = C[status] or C.unknown
+    if rep then kit.frame(b, x + 4, y - 4, x + 14, y + 6, alpha(col, 170)) end
     if status == 'not_started' then
         kit.frame(b, x, y, x + 10, y + 10, alpha(col, 200))
     else
@@ -194,7 +198,7 @@ function kit.row(b, x, y, w, n, item, hover)
     local h = kit.ROW_H
     if hover then b:rect(x, y, x + w, y + h - 2, C.hover)
     elseif n % 2 == 0 then b:rect(x, y, x + w, y + h - 2, C.stripe) end
-    kit.mark(b, x + 8, y + 5, item.status)
+    kit.mark(b, x + 8, y + 5, item.status, item.rep)
     local done = item.status == 'completed' or item.status == 'uncompletable' or item.status == 'locked'
     local right = item.badge and text_w(item.badge) + 16 or 0
     local name = fit(item.name, w - 40 - right)
