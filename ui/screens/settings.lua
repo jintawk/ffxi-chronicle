@@ -29,7 +29,7 @@ S.rows = rows
 
 function S.chrome(b, ctx)
     local right = common.frame(b, ctx)
-    common.crumbs(b, ctx, ctx.app, right)
+    common.nav(b, ctx, ctx.app, right)
     if ctx.collapsed then return nil, 40 end
     local y = common.TOP + 34
     return {x0 = common.PAD, y0 = y, x1 = ctx.w - common.PAD, y1 = ctx.h - 18}, common.TOP + 30

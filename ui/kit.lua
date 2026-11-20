@@ -100,26 +100,6 @@ function kit.tabs(b, x, y, labels, active, hover, id)
     return cx - x - 26
 end
 
--- breadcrumbs: links in the NPC blue, gold square separators, the last crumb plain; the last is
--- cut to fit maxw, keeping a trailing "(qualifier)" (the title row under it has the whole name). items = {{label =, id =, ...}}
-function kit.crumbs(b, x, y, items, maxw, hover)
-    local cx = x
-    for i, it in ipairs(items) do
-        local last = i == #items
-        local label = it.label
-        if last then label = ops.fit_tail(label, math.max(40, x + maxw - cx)) end
-        local w = text_w(label)
-        local col = last and C.text or (hover == i and C.gold_soft or C.npc)
-        b:text(cx, y, col, label)
-        if not last then
-            b:hit({x0 = cx - 2, y0 = y - 2, x1 = cx + w + 2, y1 = y + 18, id = 'crumb', i = i, crumb = it})
-            if hover == i then b:rect(cx, y + 15, cx + w, y + 16, alpha(C.gold_soft, 160)) end
-            cx = cx + w + 8
-            b:rect(cx, y + 7, cx + 4, y + 11, C.gold)
-            cx = cx + 12
-        end
-    end
-end
 
 -- the search box; caret drawn when focused and `caret` is on
 function kit.input(b, x, y, w, text, placeholder, focused, caret, hover)

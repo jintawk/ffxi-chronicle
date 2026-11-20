@@ -531,6 +531,21 @@ end
 check('one hit per category card', #hits('rcard') == 12, #hits('rcard'))
 check('the limited-time slot has no hit of its own', #hits('robj') == 2, #hits('robj'))
 
+-- the lit tab follows the screen, not the setting: a cross-link can open a record while the
+-- setting still says quests, and a tab that lied about the section would be worse than no tab
+do
+    local cm = package.loaded['ui/screens/common']
+    app.settings.active_tab = 'quest'
+    app:roe_cat(1)
+    check('a record screen lights Records', cm.tab_index(app) == 3, cm.tab_index(app))
+    app:go('area', {cat = 'mission', area = 'cop'})
+    check('an area screen lights its own tab', cm.tab_index(app) == 1, cm.tab_index(app))
+    app:home()
+    check('home follows the setting', cm.tab_index(app) == 2, cm.tab_index(app))
+    app.settings.active_tab = 'records'
+    app:home()
+end
+
 -- a packet while another tab is open must not redraw it
 app.settings.active_tab = 'mission'
 app:home()

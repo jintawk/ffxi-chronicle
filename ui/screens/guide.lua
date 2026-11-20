@@ -63,11 +63,11 @@ end
 function S.chrome(b, ctx)
     local app = ctx.app
     local right = common.frame(b, ctx)
-    common.crumbs(b, ctx, app, right)
+    local start = common.nav(b, ctx, app, right)
     if ctx.collapsed then return nil, 40 end
     local p, _, status = current(app)
     local x0, x1 = common.PAD, ctx.w - common.PAD
-    local y = common.TOP + 30
+    local y = start
     local badge = App.STATUS_TEXT[status] or 'UNKNOWN'
     local bw = kit.badge(b, x1, y + 2, badge, C[status] or C.unknown)
     -- the name wraps (a "(qualifier)" stays whole) rather than being cut: "Lure of the Wildcat (San d'Oria)" lost its

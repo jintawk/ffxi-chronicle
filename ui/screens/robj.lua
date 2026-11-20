@@ -53,12 +53,12 @@ end
 function S.chrome(b, ctx)
     local app = ctx.app
     local right = common.frame(b, ctx)
-    common.crumbs(b, ctx, app, right)
+    local start = common.nav(b, ctx, app, right)
     if ctx.collapsed then return nil, 40 end
     local p = app.view.params
     local roe = app.roe
     local x0, x1 = common.PAD, ctx.w - common.PAD
-    local y = common.TOP + 30
+    local y = start
     local name = roe and roe.index() and roe.index().name[p.id] or '?'
     local status = roe and roe.status(p.id) or 'not_started'
     local bw = kit.badge(b, x1, y + 2, BADGE[status] or 'UNKNOWN', C[status] or C.unknown)

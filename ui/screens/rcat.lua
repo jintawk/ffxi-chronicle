@@ -18,10 +18,10 @@ function S.chrome(b, ctx)
     local app = ctx.app
     local p = app.view.params
     local right = common.frame(b, ctx)
-    common.crumbs(b, ctx, app, right)
+    local start = common.nav(b, ctx, app, right)
     if ctx.collapsed then return nil, 40 end
     local x0, x1 = common.PAD, ctx.w - common.PAD
-    local y = common.TOP + 30
+    local y = start
     local roe = app.roe
     local s = roe and roe.cat_summary(p.ci)
     if not s then return {x0 = x0, y0 = y, x1 = x1, y1 = ctx.h - 18}, common.TOP + 30 end

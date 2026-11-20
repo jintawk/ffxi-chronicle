@@ -79,8 +79,10 @@ It needs MinGW-w64 i686 and nothing else. The drawing library is
 
 ## Using it
 
-`//cr` shows or hides the window. Click a card, a row or a link to go in; click a breadcrumb, or
-right-click anywhere in the window, to go back. Hovering a link shows where it goes. The three
+`//cr` shows or hides the window. Missions, Quests and Records sit at the top of every screen, so
+you can always see which of the three you are in, and each one takes you to that section's home.
+Click a card, a row or a link to go in; click the blue line above the title, or right-click
+anywhere in the window, to go back. Hovering a link shows where it goes. The three
 buttons at the top right open Settings, collapse the window, and hide it.
 
 ![An area list, sorted by status](media/area-list.png)

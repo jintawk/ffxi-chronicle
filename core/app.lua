@@ -186,7 +186,10 @@ function App:roe_items(ci, si)
     return items, sub
 end
 
--- breadcrumbs for the current view: {{label, go = function}}
+-- The path to the current view: {{label, go = function}}, home first, this screen last. Nothing
+-- draws it as a row of breadcrumbs any more (ui/screens/common.lua nav draws the tabs, and the
+-- parent above the title), but the chain is still what says how deep a screen is and what is
+-- above it.
 function App:crumbs()
     local v, p = self.view, self.view.params
     local out = {{label = 'Home', go = function() self:home() end}}

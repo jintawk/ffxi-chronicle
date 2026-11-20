@@ -11,19 +11,14 @@ local common = require('ui/screens/common')
 local S = {}
 local C = kit.C
 
-local TABS = {'Missions', 'Quests', 'Records'}
-local CATS = {'mission', 'quest', 'records'}
+-- the tab row itself lives in common now: every screen draws it, not only this one
+local CATS = common.CATS
 local GAP = 8
 
 local function cat_of(app)
     local t = app.settings.active_tab
     if t == 'quest' or t == 'records' then return t end
     return 'mission'
-end
-local function tab_index(app)
-    local c = cat_of(app)
-    for i, v in ipairs(CATS) do if v == c then return i end end
-    return 1
 end
 
 function S.chrome(b, ctx)
@@ -33,9 +28,7 @@ function S.chrome(b, ctx)
         b:title(common.PAD, common.TOP + 3, 11, C.gold, 'Chronicle')
         return nil, 40
     end
-    local active = tab_index(app)
-    local hover = ctx.hover and ctx.hover.id == 'tab' and ctx.hover.i or nil
-    kit.tabs(b, common.PAD, common.TOP - 2, TABS, active, hover, 'tab')
+    common.nav(b, ctx, app, right)
     local x0, x1 = common.PAD, ctx.w - common.PAD
     local y = common.TOP + 38
     local done, total
@@ -219,12 +212,7 @@ end
 
 function S.click(hit, ctx, app)
     if common.click(hit, ctx, app) then return end
-    if hit.id == 'tab' then
-        app.settings.active_tab = CATS[hit.i]
-        app.save()
-        ctx.win:scroll_to(0)
-        ctx.win:invalidate('all')
-    elseif hit.id == 'card' then
+    if hit.id == 'card' then
         app:go('area', {cat = hit.cat, area = hit.area}, ctx.scroll)
     elseif hit.id == 'progress' then
         app:go('guide', {cat = hit.cat, area = hit.area, name = hit.name, id = hit.entry, status = 'active'}, ctx.scroll)

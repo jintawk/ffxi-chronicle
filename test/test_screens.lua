@@ -87,10 +87,10 @@ check('a move outside is not consumed', env.fire('mouse', 0, 10, 10, 0, false) =
 check('a click outside is not consumed', env.fire('mouse', 1, 10, 10, 0, false) == nil and env.fire('mouse', 2, 10, 10, 0, false) == nil)
 
 -- tabs
-local tx, ty = chrome_hit('tab', 2)
+local tx, ty = chrome_hit('navtab', 2)
 click(tx, ty)
 check('Quests tab', app.settings.active_tab == 'quest' and N.layers[2].text:find('Jeuno') ~= nil)
-tx, ty = chrome_hit('tab', 1)
+tx, ty = chrome_hit('navtab', 1)
 click(tx, ty)
 check('back to Missions', app.settings.active_tab == 'mission')
 
@@ -99,7 +99,10 @@ x, y = content_hit(function(h) return h.id == 'card' and h.area == 'cop' end)
 local d, u = click(x, y)
 check('card click consumed', d == true and u == true)
 check('area view', app.view.name == 'area' and app.view.params.area == 'cop')
-check('crumbs Home > Chains of Promathia', N.layers[1].text:find('Home') and N.layers[1].text:find('Chains of Promathia'))
+check('the tabs stay on the area screen, with no Home crumb',
+      N.layers[1].text:find('Missions') and N.layers[1].text:find('Chains of Promathia')
+      and not N.layers[1].text:find('Home'))
+check('and one level in needs no way-back line', chrome_hit('up') == nil)
 local rows = 0
 for _, h in ipairs(win.content_b.hits) do if h.id == 'row' then rows = rows + 1 end end
 local items = app:list_items('mission', 'cop')
@@ -177,7 +180,9 @@ check('guide: card', c:find('TITLE') and c:find('Treader of an Icy Past'))
 check('guide: Three Paths has its page', c:find('Walkthrough') and c:find('Past Sins') and c:find("Tenzen's Path")
     and not c:find('No walkthrough yet.'))
 check('guide: status badge ACTIVE', N.layers[1].text:find('ACTIVE') ~= nil)
-check('crumbs Home > CoP > Three Paths', N.layers[1].text:find('Three Paths') ~= nil)
+check('two levels in: the tabs, the parent and the name',
+      N.layers[1].text:find('Three Paths') and N.layers[1].text:find('Missions')
+      and N.layers[1].text:find('< Chains of Promathia', 1, true) ~= nil)
 -- chain hover: underline + tooltip; click opens the next entry
 x, y = content_hit(function(h) return h.id == 'chain' and h.dir == 'next' end)
 env.fire('mouse', 0, x, y, 0, false)
@@ -185,10 +190,10 @@ check('chain hover tooltip', N.layers[3].text:find('opens in Chronicle') ~= nil)
 click(x, y)
 check('chain opens the next mission', app.view.name == 'guide' and app.view.params.name == 'For Whom the Verse Is Sung',
     app.view.params.name)
--- crumb back to the list
-x, y = chrome_hit('crumb', 2)
+-- the way-back line opens the parent
+x, y = chrome_hit('up')
 click(x, y)
-check('crumb opens the list', app.view.name == 'area' and app.view.params.area == 'cop')
+check('the parent line opens the list', app.view.name == 'area' and app.view.params.area == 'cop')
 -- right click goes back
 env.fire('mouse', 4, win.x + 100, win.y + 300, 0, false)
 env.fire('mouse', 5, win.x + 100, win.y + 300, 0, false)
@@ -828,22 +833,22 @@ do
     end
 end
 local GAP = 8
--- the guide's chrome: the title's lines (title font, 16 px; the name wraps), the status badge, the breadcrumb's last
--- crumb (the T lines on the breadcrumb row)
+-- the guide's chrome: the title's lines (title font, 16 px; the name wraps), the status badge, and the
+-- way-back line under the tabs (a T line at TOP + 24, reading "< <parent>")
 local function title_row(env3)
     local ops3 = package.loaded['ui/ops']
-    local crumb_y = package.loaded['ui/screens/common'].TOP
+    local up_y = package.loaded['ui/screens/common'].TOP + 24
     local badge_texts = {}
     for _, t in pairs(package.loaded['core/app'].STATUS_TEXT) do badge_texts[t] = true end
-    local title, badge, crumb = {}, nil, nil
+    local title, badge, up = {}, nil, nil
     for l in env3.N.layers[1].text:gmatch('[^\n]+') do
         local x, y, px, s = l:match('^H	([%-%d%.]+)	([%-%d%.]+)	(%d+)	%x+	(.*)$')
         if x and tonumber(px) == 16 then title[#title + 1] = {x = tonumber(x), y = tonumber(y), s = s, right = tonumber(x) + ops3.title_w(s, 16)} end
         local bx, by, bs = l:match('^T	([%-%d%.]+)	([%-%d%.]+)	%x+	(.*)$')
         if bx and badge_texts[bs] then badge = {s = bs, left = tonumber(bx) - 6, y = tonumber(by)} end   -- the badge box starts 6 px left of its text
-        if bx and tonumber(by) == crumb_y and (not crumb or tonumber(bx) > crumb.x) then crumb = {x = tonumber(bx), s = bs} end
+        if bx and tonumber(by) == up_y and bs:sub(1, 2) == '< ' then up = {x = tonumber(bx), s = bs:sub(3)} end
     end
-    return title, badge, crumb
+    return title, badge, up
 end
 -- -> the entries whose title reaches the badge, per width ("fault" re-creates the old measuring: the body font's widths)
 local function title_collisions(metrics, widths, fault)
@@ -933,16 +938,16 @@ local GUIDE_AREAS = {
 -- A name is never lost to a cut (2026-10-20, reviewing the San d'Oria screens: "Lure of the Wildcat (San d'Oria)" read
 -- "Lure of the Wildcat (San d'.." in the title and the breadcrumb at the minimum window, "(San d'Oria)" drawn nowhere).
 -- Every entry whose name is 18+ characters, at each width: the title shows the whole name (it wraps, at most three
--- lines, no line cut with '..'); where the breadcrumb cuts the name, the cut keeps a trailing "(qualifier)" and the
--- title row has the rest. Faults: the old single cut title; the old plain cut crumb.
+-- lines, no line cut with '..'). The way-back line under the tabs names the parent area, cut from the end
+-- only. Faults: the old single cut title; a way-back line that does not name its parent.
 local function cut_names(metrics, widths, fault)
     local env6 = H.load({settings = {visible_on_load = true}, fake = {metrics = metrics}})
     local app6, win6 = env6.app, env6.win()
     local ops6 = package.loaded['ui/ops']
     if fault == 'title' then
         ops6.wrap_title = function(s, px, first) return {ops6.fit_title(s, px, first)} end
-    elseif fault == 'crumb' then
-        ops6.fit_tail = function(s, width) return ops6.fit(s, width) end
+    elseif fault == 'up' then
+        ops6.fit_tail = function(s, width) return 'Somewhere else' end
     end
     local names = {}
     for _, cat in ipairs({'quest', 'mission'}) do
@@ -952,7 +957,7 @@ local function cut_names(metrics, widths, fault)
             end
         end
     end
-    local out = {tried = #names, title = {}, crumb = {}, lines = {}}
+    local out = {tried = #names, title = {}, up = {}, lines = {}}
     for _, w in ipairs(widths) do
         win6.resize = {mode = 'x', sx = 0, sy = 0, vw = win6.w, vh = win6.h, want = {w, win6.h}}
         env6.frame()
@@ -960,7 +965,7 @@ local function cut_names(metrics, widths, fault)
         for _, e in ipairs(names) do
             app6:entry(e[1], e[2], e[3], e[4])
             env6.frame()
-            local lines, _, crumb = title_row(env6)
+            local lines, _, up = title_row(env6)
             local tag = ('%s|%s|%s "%s" at %d'):format(e[1], e[2], e[4], e[3], w)
             local name = ops6.ascii(e[3]):gsub('%s+', ' ')
             local joined, cut = {}, false
@@ -972,16 +977,12 @@ local function cut_names(metrics, widths, fault)
                 out.title[#out.title + 1] = tag .. ': title ' .. table.concat(joined, ' / ')
             end
             if #lines > 3 then out.lines[#out.lines + 1] = tag .. ': ' .. #lines .. ' lines' end
-            local c = crumb and crumb.s or ''
-            if c ~= name then
-                local qual = name:match('%s(%b())$')
-                local stem = c:match('^(.-)%.%.')
-                local ok = stem ~= nil and (qual == nil or c:sub(-#qual) == qual)
-                if ok then
-                    local head = qual and name:sub(1, #name - #qual - 1) or name
-                    ok = head:sub(1, #stem) == stem
-                end
-                if not ok then out.crumb[#out.crumb + 1] = tag .. ': crumb "' .. c .. '"' end
+            -- the way-back line: it names this entry's area, whole or cut from the end
+            local area_name = ops6.ascii(app6.data.get_area_name(e[2], e[1]) or ''):gsub('%s+', ' ')
+            local u = up and up.s or ''
+            local stem = u:match('^(.-)%.%.') or u
+            if stem == '' or area_name:sub(1, #stem) ~= stem then
+                out.up[#out.up + 1] = tag .. ': way back "' .. u .. '" for "' .. area_name .. '"'
             end
         end
     end
@@ -992,11 +993,11 @@ local function check_cut_names(label, metrics)
     check(label .. ': names to try', r.tried > 300, r.tried)
     check(label .. ': every title shows the whole name, no line cut with ".." (3 widths)', #r.title == 0, #r.title .. ', e.g. ' .. tostring(r.title[1]))
     check(label .. ': a title takes at most three lines', #r.lines == 0, tostring(r.lines[1]))
-    check(label .. ': a breadcrumb cut keeps the "(qualifier)" and starts like the name', #r.crumb == 0, #r.crumb .. ', e.g. ' .. tostring(r.crumb[1]))
+    check(label .. ': the way-back line names the parent area at every width', #r.up == 0, #r.up .. ', e.g. ' .. tostring(r.up[1]))
     local ft = cut_names(metrics, {480}, 'title')
     check(label .. ': self-test, a title cut with ".." is caught', #ft.title > 0, #ft.title)
-    local fc = cut_names(metrics, {480}, 'crumb')
-    check(label .. ': self-test, a breadcrumb that loses its qualifier is caught', #fc.crumb > 0, #fc.crumb)
+    local fc = cut_names(metrics, {480}, 'up')
+    check(label .. ': self-test, a way-back line naming the wrong place is caught', #fc.up > 0, #fc.up)
 end
 check_cut_names('names, built-in widths', nil)
 if real_metrics then check_cut_names("names, the game's widths", real_metrics) end
