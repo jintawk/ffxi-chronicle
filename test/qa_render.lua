@@ -394,6 +394,9 @@ if with_screens then
         end
     end
     sized('records_sub_big', function() app:roe_sub(big_ci, big_si) end)
+    -- a list carrying both kinds of record: the two Tutorial lists above are all one-shot,
+    -- so without this the repeatable mark has no frame of its own
+    sized('records_sub_rep', function() app:roe_sub(3, 1) end)
     sized('records_obj', function() app:roe_objective(1) end)
     sized('records_obj_counter', function() app:roe_objective(16) end)
     sized('records_obj_link', function() app:roe_objective(1313) end)
