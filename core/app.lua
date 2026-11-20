@@ -109,11 +109,18 @@ end
 
 -- An objective reached from anywhere (a card, the In progress list, a search): the stack is
 -- flattened to the path the tree gives it.
-function App:roe_objective(oid, scroll)
+-- Open a record by its id. `push` is a click inside Chronicle: the screen you came from stays on
+-- the stack, so going back returns to it. Without it the stack is rebuilt as the record's own
+-- path, which is what a jump in from outside wants.
+function App:roe_objective(oid, scroll, push)
     if not self.roe then return false end
     -- `self.roe and self.roe.locate(oid)` would keep only the first of the two returns
     local ci, si = self.roe.locate(oid)
     if not ci then return false end
+    if push then
+        self:go('robj', {ci = ci, si = si, id = oid}, scroll)
+        return true
+    end
     self.stack = {{name = 'home', params = {}, scroll = 0},
                   {name = 'rcat', params = {ci = ci}, scroll = 0},
                   {name = 'rsub', params = {ci = ci, si = si}, scroll = 0}}

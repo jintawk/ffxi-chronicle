@@ -531,6 +531,18 @@ end
 check('one hit per category card', #hits('rcard') == 12, #hits('rcard'))
 check('the limited-time slot has no hit of its own', #hits('robj') == 2, #hits('robj'))
 
+-- an In progress row is a click inside Chronicle, so back returns to Home
+do
+    local Shome = require('ui/screens/home')
+    local row = hits('robj')[1]
+    app:home()
+    Shome.click(row, {app = app, win = win, scroll = 0}, app)
+    check('an In progress row opens the record', app.view.name == 'robj', app.view.name)
+    app:back()
+    check('and back returns to Home, not to a list you never opened', app.view.name == 'home',
+          app.view.name)
+end
+
 -- the lit tab follows the screen, not the setting: a cross-link can open a record while the
 -- setting still says quests, and a tab that lied about the section would be worse than no tab
 do
@@ -612,6 +624,14 @@ if xl then
     Sobj.click(xl, {app = app, win = win, scroll = 0}, app)
     check('which opens the mission', app.view.name == 'guide' and app.view.params.cat == 'mission'
           and app.view.params.area == 'sandoria', app.view.name .. ' ' .. tostring(app.view.params.area))
+    -- the link is a step forward, so back comes back here, not to the mission's own area list
+    local cm = package.loaded['ui/screens/common']
+    check('and the tab follows it', cm.tab_index(app) == 1, cm.tab_index(app))
+    app:back()
+    check('back returns to the record, not the area it linked into',
+          app.view.name == 'robj' and app.view.params.id == 1313,
+          app.view.name .. ' ' .. tostring(app.view.params.id or app.view.params.area))
+    check('and the tab comes back with it', cm.tab_index(app) == 3, cm.tab_index(app))
 end
 
 -- search, filter and sort on the list

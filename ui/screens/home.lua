@@ -219,7 +219,7 @@ function S.click(hit, ctx, app)
     elseif hit.id == 'rcard' then
         app:go('rcat', {ci = hit.ci}, ctx.scroll)
     elseif hit.id == 'robj' then
-        app:roe_objective(hit.oid)
+        app:roe_objective(hit.oid, ctx.scroll, true)
     end
 end
 

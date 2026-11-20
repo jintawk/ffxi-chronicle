@@ -228,7 +228,11 @@ end
 function S.click(hit, ctx, app)
     if common.click(hit, ctx, app) then return end
     if hit.id == 'xlink' then
-        app:entry(hit.cat, hit.area, hit.name, hit.entry)
+        -- A cross-link is a step forward inside Chronicle, not a jump in from a command, so it
+        -- pushes: a right click comes back to this record. App:entry would replace the stack
+        -- with Home > the quest's own area, and back would land you in a section you were never
+        -- in, with the tab lit on it.
+        app:go('guide', {cat = hit.cat, area = hit.area, name = hit.name, id = hit.entry}, ctx.scroll)
     end
 end
 
