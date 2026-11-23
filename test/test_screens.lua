@@ -582,6 +582,28 @@ env.fire('mouse', 0, x, y, 0, false)
 check('link tooltip says BG-wiki', N.layers[3].text:find('opens in BG%-wiki') ~= nil)
 click(x, y)
 check('NPC link opens BG-wiki', #env.urls == urls + 1 and env.urls[#env.urls]:find('^https://www.bg%-wiki.com/ffxi/') ~= nil, env.urls[#env.urls])
+
+-- a Requirements row opens the item's own BG-wiki page: in the walkthrough an item's name is a
+-- link, and the requirement list was the one place an item was named with nothing to click
+do
+    local req, name
+    for _, it in ipairs(app.data.get_area_status('quest', 'sandoria').items) do
+        app:entry('quest', 'sandoria', it.name, it.id)
+        env.frame()
+        for _, h in ipairs(win.content_b.hits) do if h.id == 'req' then req, name = h, h.name break end end
+        if req then break end
+    end
+    check('an entry with requirements was found', req ~= nil)
+    if req then
+        local rx, ry = content_hit(function(h) return h.id == 'req' end)
+        env.fire('mouse', 0, rx, ry, 0, false)
+        check('the row says it opens BG-wiki', N.layers[3].text:find('opens in BG%-wiki') ~= nil)
+        local before = #env.urls
+        click(rx, ry)
+        check('and clicking it opens that item', #env.urls == before + 1
+              and env.urls[#env.urls]:find('^https://www.bg%-wiki.com/ffxi/') ~= nil, env.urls[#env.urls])
+    end
+end
 app:entry('mission', 'cop', 'Three Paths', 530)
 x, y = content_hit(function(h) return h.id == 'tab' and h.i == 1 end)
 click(x, y)

@@ -11,6 +11,7 @@ local ops = require('ui/ops')
 local common = require('ui/screens/common')
 local App = require('core/app')
 local card = require('core/card')
+local pages = require('core/pages')
 local D = require('ui/doc')
 
 local S = {TITLE_LINES = 3, TITLE_PITCH = 22,      -- the quest's name: up to three lines of the title font, 22 px apart
@@ -442,7 +443,13 @@ function S.content(b, ctx)
                 end
                 local col = not r.found and C.dim or (owned >= r.count and C.completed or C.active)
                 local lines = ops.wrap(label, w - x)
+                local top0 = y
                 for _, l in ipairs(lines) do b:text(x, y, col, l) y = y + LINE end
+                -- the row opens the item's BG-wiki page, the way its name does in the walkthrough
+                -- below: a requirement is the one place an item is named with nothing to click
+                if r.name and r.name ~= '' then
+                    b:hit({x0 = 0, y0 = top0 - 2, x1 = w, y1 = y, id = 'req', name = r.name})
+                end
                 y = y + 2
             end
         end
@@ -496,7 +503,9 @@ function S.scrolled(ctx)
 end
 
 function S.overlay(b, ctx, hit, to_win)
-    if hit.id == 'chain' then
+    if hit.id == 'req' then
+        common.wash(b, hit, to_win)
+    elseif hit.id == 'chain' then
         local x0, y0 = to_win(hit.x0, hit.y0)
         local x1, y1 = to_win(hit.x1, hit.y1)
         b:rect(x0, y1 - 1, x1, y1, C.gold)
@@ -506,7 +515,12 @@ function S.overlay(b, ctx, hit, to_win)
 end
 
 function S.tooltip(b, ctx, hit, to_win)
-    if hit.id == 'chain' then
+    if hit.id == 'req' then
+        local _, y0 = to_win(hit.x0, hit.y0)
+        local _, y1 = to_win(hit.x0, hit.y1)
+        local mx = ctx.win.mouse_at and ctx.win.mouse_at.x or to_win(hit.x0, 0)
+        kit.tooltip(b, mx + 14, y1 + 8, hit.name, {{'Item  (opens in BG-wiki)', C.item}}, nil, ctx.w, ctx.h, y0)
+    elseif hit.id == 'chain' then
         local _, y0 = to_win(hit.x0, hit.y0)
         local _, y1 = to_win(hit.x0, hit.y1)
         local mx = ctx.win.mouse_at and ctx.win.mouse_at.x or to_win(hit.x0, 0)
@@ -525,7 +539,9 @@ end
 function S.click(hit, ctx, app)
     if common.click(hit, ctx, app) then return end
     local p = app.view.params
-    if hit.id == 'chain' then
+    if hit.id == 'req' then
+        windower.open_url(pages.url(hit.name))
+    elseif hit.id == 'chain' then
         if not app:open_chain(p.cat, p.area, hit.name) and app.say then app.say('Not found: ' .. hit.name) end
     elseif app.walkthrough_click then
         app.walkthrough_click(hit, ctx)
