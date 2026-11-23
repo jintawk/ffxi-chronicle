@@ -351,21 +351,57 @@ end
 
 -- Rule 180 (quest sandoria 98, Methods Create Madness): the card's Requirements list showed "Sahagin Key" and the wiki's own
 -- Requirements row, "Polearm skill 240+, Level 71" over that same key, was dropped whole as a repeat of it, so the skill and the
--- level were drawn nowhere. The card can only ever show items and key items, the ones it has ids and bag counts for; everything
--- else in that row lives in no other field. The row is now dropped only when it says no more than the card's list does: what is
--- left of it, once the links are taken out, must be nothing but separators and quantities. 157 pages of 1,916 have both a linked
--- item and words in that row. D.REQ_EXTRA = false is the old drawing.
+-- level were drawn nowhere. The card's list is built (core/meta: requirement_rows) from the item, key-item and quest-item links of
+-- that row alone, one row per link; a line of the row with none of those links -- a skill, a level, a rank, a nation's control of a
+-- region, "A fishing rod" -- becomes no card row and lives in no other field, so it is drawn on its own under the card. A line that
+-- does hold such a link is the card's own row and stays undrawn: its words would print the item's name a second time (the first
+-- cut of this rule drew the row whole and broke 145 pages, test_pages' own word count catching every one).
+-- 214 pages of 1,915 have such a line; on 85 more the only extra words sit inside an item's own line and are still dropped.
+-- D.REQ_EXTRA = false is the old drawing.
 D.REQ_EXTRA = true
--- what a Requirements row says beyond its links: '' when it adds nothing the card's item list does not already carry
-local function req_rest(h)
+-- is this line of a Requirements row one the card's item list already carries?
+local function req_carded(line)
+    for _, sp in ipairs(line) do
+        if sp.t == 'icon' and sp.icon == 'item' then return true end
+        if sp.t == 'link' and (sp.kind == 'item' or sp.kind == 'ki' or sp.kind == 'quest') then return true end
+    end
+    return false
+end
+-- what a line says beyond a quantity or a separator: '' when it says nothing of its own
+local function req_words(line)
     local s = ''
-    for _, sp in ipairs(h.spans) do
-        if sp.t == 'text' then s = s .. (sp.s or '')
-        elseif sp.t ~= 'br' and sp.t ~= 'link' and sp.t ~= 'icon' and sp.t ~= 'coord' and sp.t ~= 'tag' then return 'x' end
+    for _, sp in ipairs(line) do
+        if sp.t == 'text' or sp.t == 'link' or sp.t == 'coord' or sp.t == 'tag' then s = s .. (sp.s or '')
+        elseif sp.t ~= 'br' then return 'x' end     -- an icon (a key item's): more than words
     end
     s = s:lower():gsub('x%d+', ' ')                 -- "x10": the card's row carries the count
     s = s:gsub('%f[%a]and%f[%A]', ' '):gsub('%f[%a]or%f[%A]', ' ')   -- the card has an "or" row of its own
     return (s:gsub('[%s%d,;:/%+%-%.%*%(%)]', ''))
+end
+-- The spans of a Requirements row the card cannot carry, nil when it has none: the lines with no item link, in their
+-- own order, the line breaks between them closed up.
+function D.req_extra(h)
+    if not D.REQ_EXTRA or h.key ~= 'Requirements' then return nil end
+    local lines, cur = {}, {}
+    for _, sp in ipairs(h.spans) do
+        if sp.t == 'br' then lines[#lines + 1] = cur cur = {} else cur[#cur + 1] = sp end
+    end
+    lines[#lines + 1] = cur
+    local keep = {}
+    for _, line in ipairs(lines) do
+        if not req_carded(line) and req_words(line) ~= '' then
+            if #keep > 0 then keep[#keep + 1] = {t = 'br'} end
+            for _, sp in ipairs(line) do keep[#keep + 1] = sp end
+        end
+    end
+    return #keep > 0 and keep or nil
+end
+-- The spans to draw for a header field: all of them, but for a Requirements row the card's list already covers (and which
+-- D.head_hidden therefore keeps only for the lines above) just those lines.
+function D.head_spans(h, title, card)
+    if not (D.REQ_EXTRA and h.key == 'Requirements' and title and card) then return h.spans end
+    for _, k in ipairs(D.CARD_FIELD.Requirements) do if not card[k] then return h.spans end end
+    return D.req_extra(h) or h.spans
 end
 
 -- Does a field say nothing: no text, "None", "Unknown" or "--" (and no link or icon)?
@@ -498,7 +534,7 @@ function D.head_hidden(h, title, card)
     if need then
         for _, k in ipairs(need) do if not card[k] then return false end end
         -- the card's Requirements list is items only: a row that says more than that keeps its words
-        if D.REQ_EXTRA and h.key == 'Requirements' and req_rest(h) ~= '' then return false end
+        if D.req_extra(h) then return false end
         return true
     end
     return false
@@ -1298,7 +1334,7 @@ function D.draw(b, doc, X0, Y0, W, opts)
                 local label = LABEL[h.key] or h.key
                 local lines = text_w(ascii(label)) <= lw and {label} or ops.wrap(label, lw)
                 for n, line in ipairs(lines) do b:text(x0 + 10, y + LINE * (n - 1), C.faint, line) end
-                local toks = tokens(h.spans)
+                local toks = tokens(D.head_spans(h, page_title, opts.card))
                 if h.key == 'Description' then for _, t in ipairs(toks) do if t.k == 'w' then t.col = {170, 214, 236} end end end
                 local vy = flow(toks, x0 + lw + 24, y, nil, X0 + W - 10)
                 y = math.max(vy, y + LINE * #lines)

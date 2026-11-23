@@ -158,8 +158,9 @@ do
     -- Requirements: the card's list is items only, so a row that also says a skill or a condition stays
     local function req(spans) return {key = 'Requirements', spans = spans} end
     local link = function(s) return {t = 'link', kind = 'item', s = s} end
+    local plink = function(s) return {t = 'link', kind = 'page', s = s} end   -- {p:Polearm}: a wiki page, not an item
     local items_only = req({link('Sahagin Key')})
-    local with_skill = req({link('Polearm'), {t = 'text', s = ' skill 240+, Level 71'}, {t = 'br'}, link('Sahagin Key')})
+    local with_skill = req({plink('Polearm'), {t = 'text', s = ' skill 240+, Level 71'}, {t = 'br'}, link('Sahagin Key')})
     check('head_hidden: a Requirements row of items only repeats the card',
           D.head_hidden(items_only, 'T', {requirements = true}) == true)
     check('head_hidden: one that also names a skill and a level stays',
@@ -167,14 +168,36 @@ do
     check('head_hidden: a quantity or an "or" is not more than the card says',
           D.head_hidden(req({link('Bronze Ingot'), {t = 'text', s = ' x10 or '}, link('Brass Ingot')}), 'T',
                         {requirements = true}) == true)
-    check('head_hidden: a condition in brackets stays',
+    -- the words sit in the item's own line, so drawing them would name the item a second time (the card already does)
+    check('head_hidden: a condition beside the item itself goes with it',
           D.head_hidden(req({link('Moon Bauble'), {t = 'text', s = ' (first time completion only)'}}), 'T',
+                        {requirements = true}) == true)
+    check('head_hidden: a condition on a line of its own stays',
+          D.head_hidden(req({link('Moon Bauble'), {t = 'br'}, {t = 'text', s = 'Region under Bastok control'}}), 'T',
                         {requirements = true}) == false)
+    -- and only that line is drawn: the item's line is the card's
+    local kept = D.req_extra(with_skill)
+    check('req_extra: the item line is left out', kept ~= nil and #kept == 2
+          and kept[1].s == 'Polearm' and kept[2].s == ' skill 240+, Level 71')
+    check('req_extra: a row of items only has nothing to draw', D.req_extra(items_only) == nil)
+    check('req_extra: the lines kept are joined by a break',
+          (function()
+              local k = D.req_extra(req({{t = 'text', s = 'A fishing rod'}, {t = 'br'}, link('Lure'),
+                                         {t = 'br'}, {t = 'text', s = 'Level 20'}}))
+              return k ~= nil and #k == 3 and k[2].t == 'br' and k[3].s == 'Level 20'
+          end)())
+    check('req_extra: only a Requirements row is trimmed', D.req_extra({key = 'Rewards', spans = {}}) == nil)
+    check('head_spans: the row the card has no list for is drawn whole',
+          D.head_spans(with_skill, 'T', {}) == with_skill.spans)
+    check('head_spans: a tab panel draws it whole', D.head_spans(with_skill, nil, {requirements = true}) == with_skill.spans)
+    check('head_spans: under a card list only the prose line', #D.head_spans(with_skill, 'T', {requirements = true}) == 2)
     check('head_hidden: with no card list the row stays either way',
           D.head_hidden(items_only, 'T', {}) == false and D.head_hidden(with_skill, 'T', {}) == false)
     D.REQ_EXTRA = false
     check('head_hidden: self-test, the old drawing dropped the skill row',
           D.head_hidden(with_skill, 'T', {requirements = true}) == true)
+    check('head_spans: self-test, the old drawing had nothing to trim',
+          D.head_spans(with_skill, 'T', {requirements = true}) == with_skill.spans)
     D.REQ_EXTRA = true
 
     local start = field('Starting NPC', 'Kuu - Zone (F-8)')

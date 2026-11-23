@@ -245,6 +245,57 @@ local function field_text(h)
     end
     return t, plain
 end
+-- rule 180: the card's Requirements list is one row per item, key-item or quest-item link of that row, so a {br} line
+-- of it with none of those links (a skill, a level, a rank, a condition) is in no card field and is drawn on its own;
+-- a line that has one is the card's row and stays out, words and all (drawing them would name the item twice).
+local function req_prose(h)
+    -- a line that says nothing of its own: a quantity, an "and" or an "or", punctuation
+    local function bare(w)
+        w = w:lower():gsub('x%d+', ' '):gsub('%f[%a]and%f[%A]', ' '):gsub('%f[%a]or%f[%A]', ' ')
+        return (w:gsub('[%s%d,;:/%+%-%.%*%(%)]', ''))
+    end
+    local prose, carded, words = false, false, ''
+    for _, sp in ipairs(h.spans) do
+        if sp.t == 'br' then
+            if not carded and bare(words) ~= '' then prose = true end
+            carded, words = false, ''
+        elseif (sp.t == 'icon' and sp.icon == 'item')
+            or (sp.t == 'link' and (sp.kind == 'item' or sp.kind == 'ki' or sp.kind == 'quest')) then carded = true
+        elseif sp.t == 'icon' then words = words .. 'icon'
+        else words = words .. tostring(sp.s or '') end
+    end
+    if not carded and bare(words) ~= '' then prose = true end
+    return prose
+end
+
+-- the spans of a Requirements row the page is expected to draw under a card that lists its items: the prose lines only
+local function req_shown(h)
+    local function bare(w)
+        w = w:lower():gsub('x%d+', ' '):gsub('%f[%a]and%f[%A]', ' '):gsub('%f[%a]or%f[%A]', ' ')
+        return (w:gsub('[%s%d,;:/%+%-%.%*%(%)]', ''))
+    end
+    local out, line, carded, words = {}, {}, false, ''
+    local function close()
+        if not carded and bare(words) ~= '' then
+            if #out > 0 then out[#out + 1] = {t = 'br'} end
+            for _, sp in ipairs(line) do out[#out + 1] = sp end
+        end
+        line, carded, words = {}, false, ''
+    end
+    for _, sp in ipairs(h.spans) do
+        if sp.t == 'br' then close()
+        else
+            line[#line + 1] = sp
+            if (sp.t == 'icon' and sp.icon == 'item')
+                or (sp.t == 'link' and (sp.kind == 'item' or sp.kind == 'ki' or sp.kind == 'quest')) then carded = true
+            elseif sp.t == 'icon' then words = words .. 'icon'
+            else words = words .. tostring(sp.s or '') end
+        end
+    end
+    close()
+    return out
+end
+
 local function page_hidden(h, title, shown, printed)
     local t, plain = field_text(h)
     if h.key == 'Name' then return t == title end
@@ -273,6 +324,8 @@ local function page_hidden(h, title, shown, printed)
     local need = CARD_OF[h.key]
     if not need then return false end
     for _, k in ipairs(need) do if not shown[k] then return false end end
+    -- rule 180: a Requirements line the card's item list cannot carry keeps the row (only that line is drawn)
+    if h.key == 'Requirements' and req_prose(h) then return false end
     return true
 end
 
@@ -415,11 +468,13 @@ end
 
 -- the header fields a page draws with tab `sel` open: the page's own on a page without tabs, else the open
 -- tab's (nothing above the tab strip: the tabs keep it)
+-- the header fields drawn, and which of them are the page header's own (a tab panel's box draws a row the page
+-- header would leave to the card, so the two are not read by the same rules)
 local function header_fields(doc, sel, shown, printed)
-    local out = {}
+    local out, of_page = {}, {}
     if not doc.tabbed then
         for _, h in ipairs(doc.head) do
-            if not page_hidden(h, doc.title, shown, printed) then out[#out + 1] = h end
+            if not page_hidden(h, doc.title, shown, printed) then out[#out + 1] = h of_page[h] = true end
         end
     end
     local function blocks(bs)
@@ -434,7 +489,7 @@ local function header_fields(doc, sel, shown, printed)
         end
     end
     blocks(doc.blocks)
-    return out
+    return out, of_page
 end
 
 -- what the page should draw with tab `sel[group]` open in each group
@@ -494,7 +549,9 @@ local function expected(doc, sel, shown, printed)
         for _, h in ipairs(doc.head) do
             if not page_hidden(h, doc.title, shown, printed) then
                 words_of(D.HEAD_LABEL[h.key] or h.key, want)
-                spans(h.spans)
+                -- rule 180: under a card that lists the items, only the row's prose lines are drawn
+                if h.key == 'Requirements' and shown and shown.requirements then spans(req_shown(h))
+                else spans(h.spans) end
             end
         end
     end
@@ -1707,10 +1764,13 @@ local function check_page(key, path, mutate, quiet, draw_card)
             end
 
             -- header: the label of each infobox field, and its value on the same line
-            for _, h in ipairs(header_fields(doc, sel, shown, printed)) do
+            local hfields, of_page = header_fields(doc, sel, shown, printed)
+            for _, h in ipairs(hfields) do
                 local label = ops.ascii(D.HEAD_LABEL[h.key] or h.key)
                 local first
-                local sp1 = h.spans[1]
+                -- rule 180: under a card that lists the items, a Requirements row draws only its prose lines
+                local hs = (of_page[h] and h.key == 'Requirements' and shown and shown.requirements) and req_shown(h) or h.spans
+                local sp1 = hs[1]
                 if sp1 and (sp1.t == 'text' or sp1.t == 'link' or sp1.t == 'coord') then first = ops.ascii(sp1.s):match('%S+') end
                 local found_label, found_value = false, first == nil
                 for _, it in ipairs(items) do
