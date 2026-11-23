@@ -152,6 +152,8 @@ them and finishing them.
 
 ### Records of Eminence
 
+![The Records home, with a card per category](media/records-home.png)
+
 The Records tab is the game's own Records of Eminence menu with gauges on it: twelve categories,
 112 sub-categories, 1,508 objectives, all read out of the game's own data files, so a game update
 that adds objectives or a whole category needs no new Chronicle.
@@ -164,8 +166,18 @@ that adds objectives or a whole category needs no new Chronicle.
   count to show, and Chronicle says so rather than guessing.
 - **The middle level** shows what is inside each sub-category, because the game's own names for
   them ("Job Levels 1", "Quests 1") do not.
+
+![A category, one row per sub-category](media/records-category.png)
+
+- **The list** inside a sub-category searches, sorts and filters like any other list in Chronicle, and marks a repeatable record with a second square behind its status.
+
+![The objectives of one sub-category](media/records-list.png)
 - **268 objectives wrap a quest or mission** Chronicle already documents. Those link straight into
   that entry, with its walkthrough and its step progress.
+
+![A record you have set, with the server's own count](media/records-objective.png)
+
+![A record that wraps a quest, with that quest's own step strip](media/records-crosslink.png)
 - **An objective the game is not offering you yet** is still listed, dimmed, saying which record
   unlocks it. The percentage leaves those out, so it is the figure the game itself would show.
 
@@ -197,7 +209,8 @@ Click a map to enlarge it.
 ![A quest's requirements, with item icons](media/requirements.png)
 
 Requirements are checked against every bag and your key items, so a tick means you are actually
-carrying it.
+carrying it. Click one to open that item on BG-wiki. Anything the wiki asks for that is not an
+item, like a skill level or a rank, is kept as a line of its own under the list.
 
 ## Pictures and credits
 

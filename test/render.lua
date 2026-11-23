@@ -48,7 +48,11 @@ local function shoot(name, note, pad)
     local x1 = math.min(3840, math.floor((win.x + win.w + pad[3]) * f))
     local y1 = math.min(2160, math.floor((win.y + (win.collapsed and 46 or win.h) + pad[4]) * f))
     T.dump(out .. '/' .. name .. '.raw')
-    states[#states + 1] = {name = name, x0 = x0, y0 = y0, x1 = x1, y1 = y1, note = note}
+    local wx0, wy0 = math.floor(win.x * f), math.floor(win.y * f)
+    local wx1 = math.floor((win.x + win.w) * f)
+    local wy1 = math.floor((win.y + (win.collapsed and 46 or win.h)) * f)
+    states[#states + 1] = {name = name, x0 = x0, y0 = y0, x1 = x1, y1 = y1, note = note,
+        wx0 = wx0, wy0 = wy0, wx1 = wx1, wy1 = wy1}
     local s = N.status()
     print(('%-22s %5d quads %3d batches %5.0f us  %s'):format(name, s.quads, s.batches, s.last_us, note))
 end
@@ -144,6 +148,53 @@ win:invalidate('all') win:flush()
 app:entry('quest', 'jeuno', 'Fistful of Fury')
 win:flush()
 shoot('guide_reqs', 'Guide with requirements (one item owned)')
+-- Methods Create Madness: the bags checked against the item list, plus the one requirement
+-- the item list cannot hold (a weapon skill level)
+app:entry('quest', 'sandoria', 'Methods Create Madness')
+win:flush()
+shoot('guide_reqs_skill', 'Guide: requirements as items, and as words the item list cannot hold')
+
+-- the Records tab: its home, a category, a sub-category, and a record you have set
+H.feed_roe(env)
+win.w, win.h = 700, 900
+-- the Records screens are sized to what they hold, so a picture has no empty tail
+local function fit(maxh)
+    win:invalidate('all') win:flush()
+    local chrome = win.h - (win.vp.y1 - win.vp.y0)
+    win.h = math.min(maxh or 1120, math.max(360, (win.content_h or 0) + chrome + 8))
+    win:invalidate('all') win:flush() win:scroll_to(0) win:flush()
+end
+win:invalidate('all') win:flush()
+click(hit_center(win.chrome_b.hits, function(h) return h.id == 'navtab' and h.i == 3 end))
+fit()
+shoot('roe_home', 'Records: a card per category, and the objectives you have set')
+app:roe_cat(1) fit()
+shoot('roe_cat', 'Records: Tutorial, one row per sub-category with what is inside it')
+app:roe_sub(1, 1) fit()
+shoot('roe_sub', 'Records: the objectives of one sub-category')
+-- a record that wraps a quest Chronicle already documents: the link, its step strip and count
+local arti
+for si, sub in ipairs(require('core/roe').index().cats[1].subs) do
+    if sub.n == 'Quests (Artifact 1)' then arti = si end
+end
+if arti then
+    app:roe_sub(1, arti) win:invalidate('all') win:flush()
+    for _, h in ipairs(win.content_b.hits) do
+        if h.id == 'obj' then app:roe_objective(h.oid) break end
+    end
+    fit()
+    shoot('roe_xlink', 'Records: a record that wraps a quest, with the step the quest is on')
+end
+app:home() win:flush()
+local roe_oid
+for _, h in ipairs(win.content_b.hits) do if h.id == 'robj' then roe_oid = h.oid break end end
+if roe_oid then
+    app:roe_objective(roe_oid) fit()
+    shoot('roe_obj', 'Records: a record you have set, with the count the server sends')
+end
+win.w, win.h = 620, 760
+win:invalidate('all') win:flush()
+
 app:go('settings', {}, 0)
 shoot('settings', 'Settings')
 app:home()
@@ -154,6 +205,10 @@ app:area_list('mission', 'cop')
 win.w, win.h = 480, 560
 win:invalidate('all') win:flush()
 shoot('narrow', 'Resized to the minimum width')
+-- the Missions home at its full height, for the README
+click(hit_center(win.chrome_b.hits, function(h) return h.id == 'navtab' and h.i == 1 end))
+win.w = 700 fit()
+shoot('home_full', 'Home: Missions, every card and everything in progress')
 win.w, win.h = 620, 760
 win:invalidate('all') win:flush()
 for _, t in ipairs({1, 3, 8}) do
@@ -170,7 +225,8 @@ env.cmd('scale', 'one')
 local f = assert(io.open(out .. '/states.lua', 'w'))
 f:write('return {\n')
 for _, s in ipairs(states) do
-    f:write(('  {name = %q, x0 = %d, y0 = %d, x1 = %d, y1 = %d, note = %q},\n'):format(s.name, s.x0, s.y0, s.x1, s.y1, s.note))
+    f:write(('  {name = %q, x0 = %d, y0 = %d, x1 = %d, y1 = %d, note = %q, win = {%d, %d, %d, %d}},\n')
+        :format(s.name, s.x0, s.y0, s.x1, s.y1, s.note, s.wx0, s.wy0, s.wx1, s.wy1))
 end
 f:write('}\n')
 f:close()
