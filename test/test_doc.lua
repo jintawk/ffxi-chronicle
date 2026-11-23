@@ -155,6 +155,28 @@ do
     check('head_hidden: card shows fame', D.head_hidden(fame, 'T', {fame = true}) == true)
     check('head_hidden: card lacks fame', D.head_hidden(fame, 'T', {npc = true}) == false and D.head_hidden(fame, 'T', {}) == false)
     check('head_hidden: no card, nothing dropped for it', D.head_hidden(fame, 'T', nil) == false)
+    -- Requirements: the card's list is items only, so a row that also says a skill or a condition stays
+    local function req(spans) return {key = 'Requirements', spans = spans} end
+    local link = function(s) return {t = 'link', kind = 'item', s = s} end
+    local items_only = req({link('Sahagin Key')})
+    local with_skill = req({link('Polearm'), {t = 'text', s = ' skill 240+, Level 71'}, {t = 'br'}, link('Sahagin Key')})
+    check('head_hidden: a Requirements row of items only repeats the card',
+          D.head_hidden(items_only, 'T', {requirements = true}) == true)
+    check('head_hidden: one that also names a skill and a level stays',
+          D.head_hidden(with_skill, 'T', {requirements = true}) == false)
+    check('head_hidden: a quantity or an "or" is not more than the card says',
+          D.head_hidden(req({link('Bronze Ingot'), {t = 'text', s = ' x10 or '}, link('Brass Ingot')}), 'T',
+                        {requirements = true}) == true)
+    check('head_hidden: a condition in brackets stays',
+          D.head_hidden(req({link('Moon Bauble'), {t = 'text', s = ' (first time completion only)'}}), 'T',
+                        {requirements = true}) == false)
+    check('head_hidden: with no card list the row stays either way',
+          D.head_hidden(items_only, 'T', {}) == false and D.head_hidden(with_skill, 'T', {}) == false)
+    D.REQ_EXTRA = false
+    check('head_hidden: self-test, the old drawing dropped the skill row',
+          D.head_hidden(with_skill, 'T', {requirements = true}) == true)
+    D.REQ_EXTRA = true
+
     local start = field('Starting NPC', 'Kuu - Zone (F-8)')
     check('head_hidden: Starting NPC needs the NPC and the zone', D.head_hidden(start, 'T', {npc = true, zone = true}) == true
         and D.head_hidden(start, 'T', {npc = true}) == false and D.head_hidden(start, 'T', {zone = true}) == false)

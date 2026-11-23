@@ -322,6 +322,8 @@ D.HEAD_LABEL = {['Starting NPC'] = 'Start', Description = 'Story', ['Previous Mi
 D.CARD_FIELD = {['Required Fame'] = {'fame'}, ['Starting NPC'] = {'npc', 'zone'},
                 Description = {'description'}, Rewards = {'reward'},
                 Requirements = {'requirements'}, ['Previous Quest'] = {'previous'}, ['Next Quest'] = {'next'}}
+-- Requirements is the one CARD_FIELD entry with a second test below (D.REQ_EXTRA): the card's list holds only the items
+-- Chronicle has ids for, so a wiki row that also carries a skill, a level, a rank or a condition is not a repeat of it.
 -- Title is not here either: a title list ("Royal Wedding Planner" and "Consort Candidate") shows whole beside the card's one.
 -- wiki field -> the card field whose printed text (card.printed) it must not repeat: hidden only when it says the same
 -- A mission's Previous / Next Mission are the card's chain links (the quests' Previous / Next Quest are in D.CARD_FIELD); they are hidden when
@@ -345,6 +347,25 @@ local function plain_text(h)
         else return nil end
     end
     return (s:lower():gsub('[^%w]', ''))
+end
+
+-- Rule 180 (quest sandoria 98, Methods Create Madness): the card's Requirements list showed "Sahagin Key" and the wiki's own
+-- Requirements row, "Polearm skill 240+, Level 71" over that same key, was dropped whole as a repeat of it, so the skill and the
+-- level were drawn nowhere. The card can only ever show items and key items, the ones it has ids and bag counts for; everything
+-- else in that row lives in no other field. The row is now dropped only when it says no more than the card's list does: what is
+-- left of it, once the links are taken out, must be nothing but separators and quantities. 157 pages of 1,916 have both a linked
+-- item and words in that row. D.REQ_EXTRA = false is the old drawing.
+D.REQ_EXTRA = true
+-- what a Requirements row says beyond its links: '' when it adds nothing the card's item list does not already carry
+local function req_rest(h)
+    local s = ''
+    for _, sp in ipairs(h.spans) do
+        if sp.t == 'text' then s = s .. (sp.s or '')
+        elseif sp.t ~= 'br' and sp.t ~= 'link' and sp.t ~= 'icon' and sp.t ~= 'coord' and sp.t ~= 'tag' then return 'x' end
+    end
+    s = s:lower():gsub('x%d+', ' ')                 -- "x10": the card's row carries the count
+    s = s:gsub('%f[%a]and%f[%A]', ' '):gsub('%f[%a]or%f[%A]', ' ')   -- the card has an "or" row of its own
+    return (s:gsub('[%s%d,;:/%+%-%.%*%(%)]', ''))
 end
 
 -- Does a field say nothing: no text, "None", "Unknown" or "--" (and no link or icon)?
@@ -476,6 +497,8 @@ function D.head_hidden(h, title, card)
     local need = card and D.CARD_FIELD[h.key]
     if need then
         for _, k in ipairs(need) do if not card[k] then return false end end
+        -- the card's Requirements list is items only: a row that says more than that keeps its words
+        if D.REQ_EXTRA and h.key == 'Requirements' and req_rest(h) ~= '' then return false end
         return true
     end
     return false
