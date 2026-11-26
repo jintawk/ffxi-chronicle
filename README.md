@@ -1,5 +1,10 @@
 # Chronicle
 
+[![tests](https://github.com/jintawk/ffxi-chronicle/actions/workflows/tests.yml/badge.svg)](https://github.com/jintawk/ffxi-chronicle/actions/workflows/tests.yml)
+[![release](https://img.shields.io/github/v/release/jintawk/ffxi-chronicle)](https://github.com/jintawk/ffxi-chronicle/releases/latest)
+[![downloads](https://img.shields.io/github/downloads/jintawk/ffxi-chronicle/total)](https://github.com/jintawk/ffxi-chronicle/releases)
+[![licence](https://img.shields.io/github/license/jintawk/ffxi-chronicle)](LICENSE)
+
 A quest and mission tracker for Final Fantasy XI, drawn in the game's own windows.
 
 Chronicle shows your completion across every quest area, mission storyline and Records of Eminence
