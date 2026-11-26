@@ -1,0 +1,32 @@
+name: tests
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Lua 5.1
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lua5.1
+
+      - name: Every Lua file compiles
+        run: git ls-files '*.lua' | lua5.1 test/syntax_check.lua
+
+      # The layout, pixel and vision passes need a game installation, so they stay local.
+      - name: The suites that need no game installation
+        run: |
+          for t in test_core test_doc test_input test_mission_words test_steps test_roe test_complete_strip test_progress test_progress_ui test_progress_lists test_pages; do
+            echo "== $t"
+            lua5.1 "test/$t.lua"
+          done
