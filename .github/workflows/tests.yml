@@ -1,0 +1,38 @@
+name: tests
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Lua 5.1
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lua5.1
+
+      - name: Every Lua file compiles
+        run: git ls-files '*.lua' | lua5.1 test/syntax_check.lua
+
+      # Left out, and local only: the pixel and vision passes, which need an installation and a
+      # device; test_perf, which takes an unpacked FFXiMain.dll; test_data, which wants a v1
+      # worktree; test_load and test_screens, which need the DLL; and test_core and
+      # test_progress, which exercise the addon's own saving, so they make folders the way
+      # Windows makes them.
+      - name: The suites that need no game installation
+        run: |
+          failed=
+          for t in test_doc test_input test_mission_words test_steps test_roe test_complete_strip test_progress_ui test_progress_lists test_pages; do
+            echo "== $t"
+            lua5.1 "test/$t.lua" || failed="$failed $t"
+          done
+          if [ -n "$failed" ]; then echo "FAILED:$failed"; exit 1; fi
