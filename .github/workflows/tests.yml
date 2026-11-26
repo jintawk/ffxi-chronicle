@@ -23,10 +23,12 @@ jobs:
       - name: Every Lua file compiles
         run: git ls-files '*.lua' | lua5.1 test/syntax_check.lua
 
-      # The layout, pixel and vision passes need a game installation, so they stay local.
+      # The pixel and vision passes need an installation and a device, so they stay local.
       - name: The suites that need no game installation
         run: |
+          failed=
           for t in test_core test_doc test_input test_mission_words test_steps test_roe test_complete_strip test_progress test_progress_ui test_progress_lists test_pages; do
             echo "== $t"
-            lua5.1 "test/$t.lua"
+            lua5.1 "test/$t.lua" || failed="$failed $t"
           done
+          if [ -n "$failed" ]; then echo "FAILED:$failed"; exit 1; fi
