@@ -314,8 +314,9 @@ app.prefs = {
 -- from the DLL once a second in prerender, never here
 windower.register_event('mouse', function(t, x, y, delta, blocked)
     if not win or not win.visible or not nui.drawing then return end
-    local f = nui.view.f
-    if win:mouse(t, x / f, y / f, delta, blocked) then return true end
+    -- x and y are UI px; nui.view.mf turns them into the window's Lua units (core/nui.lua)
+    local m = nui.view.mf or 1
+    if win:mouse(t, x * m, y * m, delta, blocked) then return true end
 end)
 
 windower.register_event('keyboard', function(dik, down, flags, blocked)
@@ -504,9 +505,11 @@ local function status()
     say(('Lua heap %d KB | areas resident %d%s | %s'):format(collectgarbage('count'), n, idx and ' + index' or '',
         pages.status()))
     local gt, src = nui.N.wtread()
-    say(('window type %d (%s) | game %s (%s) | UI size %s | screen %dx%d px, view x%.3f (%s, size %.1f)'):format(
+    local us = nui.uiscale()
+    say(('window type %d (%s) | game %s (%s) | UI size %s | uiscale %s | screen %dx%d px, view x%.3f (%s, size %.1f), mouse x%.3f'):format(
         nui.wt.type, nui.wt.follow and 'auto' or 'pinned', tostring(gt), src or 'not found',
-        s.ui_found and (s.ui_w .. 'x' .. s.ui_h) or 'not found', s.rt_w, s.rt_h, nui.view.f, nui.view.mode, nui.view.size))
+        s.ui_found and (s.ui_w .. 'x' .. s.ui_h) or 'not found', us and ('%.3f'):format(us) or 'not reported',
+        s.rt_w, s.rt_h, nui.view.f, nui.view.mode, nui.view.size, nui.view.mf or 1))
     if win then
         local st = win.stats
         say(('window %dx%d at %d,%d | sent chrome %d content %d overlay %d, %d unchanged not sent | last layout %.1f ms'):format(

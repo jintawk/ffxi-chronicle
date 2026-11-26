@@ -2,7 +2,7 @@
     Chronicle: the native layer (libs/_chronicle.dll, source plugin/).
 
     Loads the DLL fail-closed (nothing is drawn or consumed if it, the hook or a signature is
-    missing), keeps the view scale (one Lua unit = f screen px: 1, the game's UI size, a simulated
+    missing), keeps the view scale (one Lua unit = f window px: 1, the game's UI scale, a simulated
     screen, times the size setting), and follows the game's window type (config id 18) four times a
     second unless a type is pinned.
 
@@ -21,7 +21,9 @@ local nui = {}
 nui.N = nil
 nui.error = nil
 nui.running = false
-nui.view = {mode = 'one', f = 1, size = 1, sim_w = nil, sim_h = nil, auto = true}
+-- f: Lua units per window px. mf: Lua units per mouse px, which is f with the UI scale taken out
+-- again (see nui.uiscale); 1 whenever the game's UI is not scaled.
+nui.view = {mode = 'one', f = 1, mf = 1, size = 1, sim_w = nil, sim_h = nil, auto = true}
 nui.wt = {follow = true, pinned = 6, type = 6, next_poll = 0, changes = 0, loaded = nil}
 -- the module draws (status().drawing; a DLL without the field counts as drawing), read at most once a second (review LIFE-4)
 nui.drawing = true
@@ -53,12 +55,32 @@ end
 -- The logical screen, in Lua units.
 function nui.screen()
     local w, h = nui.screen_px()
-    return math.floor(w / nui.view.f), math.floor(h / nui.view.f)
+    -- (+ 1e-6: f can be a ratio of window px, so 2560 / (2560 / 1707) must stay 1707)
+    return math.floor(w / nui.view.f + 1e-6), math.floor(h / nui.view.f + 1e-6)
+end
+
+-- The game's UI scale as Windower reports it: the window (x_res) over the UI it draws in it
+-- (ui_x_res). 1 when the UI is not scaled, 1.5 at the launcher's 1.5x, nil when Windower gives
+-- only one of the two.
+--
+-- It matters twice. Windower delivers mouse coordinates in UI px, the same space its own text
+-- locations use (libs/texts.lua anchors a right-aligned text at ui_x_res), while this window is
+-- placed and drawn in window px. And under scale 'ui' it is the factor itself.
+function nui.uiscale()
+    local ws = windower and windower.get_windower_settings and windower.get_windower_settings()
+    local x = ws and tonumber(ws.x_res) or 0
+    local u = ws and tonumber(ws.ui_x_res) or 0
+    if x > 0 and u > 0 then return x / u end
+    return nil
 end
 
 local function base_f(v)
     local w = nui.screen_px()
     if v.mode == 'ui' then
+        -- Windower's own UI scale first. The client's UI size is the fallback: it is render px, so
+        -- under supersampling it is the supersampled target's width and this reads half.
+        local u = nui.uiscale()
+        if u then return u end
         local s = nui.N and nui.N.status()
         if s and s.ui_found and s.ui_w > 0 then return w / s.ui_w end
         return nil, 'the game UI size was not found'
@@ -80,6 +102,10 @@ function nui.apply()
         why = 'scale out of range: back to one'
     end
     v.f = f
+    -- mouse px are UI px, Lua units are window px / f, so one mouse px is uiscale / f Lua units.
+    -- Read here and not per event: the UI scale is fixed for the session, and the mouse event runs
+    -- on the worker thread the game waits behind.
+    v.mf = (nui.uiscale() or 1) / f
     if nui.N then
         local w, h = nui.screen_px()
         nui.N.screen(w, h, v.auto, f)

@@ -124,7 +124,12 @@ function H.load(opts)
             table.insert(env.events[name], fn)
         end,
         add_to_chat = function(col, s) env.chat[#env.chat + 1] = s end,
-        get_windower_settings = function() return {x_res = opts.screen_w or 3840, y_res = opts.screen_h or 2160} end,
+        -- ui_w/ui_h stand in for the game's UI scale: Windower reports the window in x_res and the UI it
+        -- draws in it in ui_x_res, and the mouse event speaks UI px (core/nui.lua, nui.uiscale)
+        get_windower_settings = function()
+            local w, h = opts.screen_w or 3840, opts.screen_h or 2160
+            return {x_res = w, y_res = h, ui_x_res = opts.ui_w or w, ui_y_res = opts.ui_h or h}
+        end,
         open_url = function(u) env.urls[#env.urls + 1] = u end,
         ffxi = {
             get_player = function() return {name = opts.player or 'Berrant'} end,

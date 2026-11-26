@@ -311,6 +311,42 @@ do
     check('ASSETS: status reports the art either way', chat_has(env, 'game art: '))
 end
 
+---------------------------------------------------------------------------------------------------------------------------
+-- SCALE: Windower hands the mouse event UI px, not window px. Its own libs/texts.lua anchors a right-aligned text at
+-- ui_x_res, and that is the space the event speaks too, while this window is placed and drawn in window px (x_res). With
+-- the game's UI scaled, a click therefore landed up and left of the window, and the player had to click right and down of
+-- it to hit anything. Reported against 2.1.0 on Windows at 2560x1440 with the UI at 1.5x.
+do
+    local W, H2, UW, UH = 2560, 1440, 1706, 960
+    local s = W / UW
+    local env, win = shown({screen_w = W, screen_h = H2, ui_w = UW, ui_h = UH})
+    local n = package.loaded['core/nui']
+    check('SCALE: the UI scale comes from Windower', n and n.uiscale() and math.abs(n.uiscale() - s) < 1e-9,
+        n and tostring(n.uiscale()))
+    check('SCALE: one mouse px is uiscale Lua units', math.abs((n.view.mf or 0) - s) < 1e-9, n.view.mf)
+
+    -- the cursor is physically 20 px inside the window; Windower reports that point divided by the UI scale
+    check('SCALE: the window is far enough from the corner for this check', win.x > 40 and win.y > 40, win.x .. ',' .. win.y)
+    local lx, ly = win.x + 20, win.y + 20
+    check('SCALE: a press over the window is consumed', env.fire('mouse', 1, lx / s, ly / s, 0, false) == true)
+    env.fire('mouse', 2, lx / s, ly / s, 0, false)
+
+    -- the bug itself: without the conversion the window looks for that click at lx / s, which is off its left edge
+    n.view.mf = 1
+    check('SCALE: 2.1.0 looked up and left, and missed', env.fire('mouse', 1, lx / s, ly / s, 0, false) == nil)
+    env.fire('mouse', 2, lx / s, ly / s, 0, false)
+end
+do
+    -- no UI scale, which is every machine the addon was written and tested on: nothing is converted
+    local env, win = shown({screen_w = 2560, screen_h = 1440})
+    local n = package.loaded['core/nui']
+    check('SCALE: an unscaled UI converts nothing', math.abs((n.view.mf or 0) - 1) < 1e-9, n.view.mf)
+    local lx, ly = win.x + 20, win.y + 20
+    check('SCALE: and a press over the window is consumed', env.fire('mouse', 1, lx, ly, 0, false) == true)
+    env.fire('mouse', 2, lx, ly, 0, false)
+end
+
+
 restore()
 ---------------------------------------------------------------------------------------------------------------------------
 -- the run wrote only into its own data folder: the player's data/ is exactly as it was (a killed run or two runs at once can lose
