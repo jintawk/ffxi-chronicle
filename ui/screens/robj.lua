@@ -9,6 +9,10 @@
     is "Smash the Orcish Scouts"). Those get a Walkthrough section: a link into that entry and
     that entry's own step progress. The others have no such section at all.
 
+    A few have a BG-wiki page of their own: the RoE quests (Impermanence, Panta Rhei, the Ygnas and
+    Arciela Directives; pages/records/roe/<id>.lua, keyed record|roe|<id>). The page is drawn under
+    the details as a guide draws its walkthrough, its header leaving out what the details say.
+
     An objective the client would not offer yet says what unlocks it, by name, because the thing
     that unlocks it is another record and the client ships every record's name.
 ]]
@@ -33,10 +37,19 @@ local function num(n)
 end
 S.num = num
 
+S.HIDDEN_STEP = true
+
 -- what a failed requirement is waiting for, in one line
 function S.lock_text(app, why)
     if not why then return nil end
     if why.kind == 'record' then
+        -- A record no menu shows ("Scenarios 15", "Unlocking Scenarios IX", or no name at all) is the client's own flag, not
+        -- something a player can look up: say what sets it (roe/unlocks.lua). S.HIDDEN_STEP = false is the line before.
+        local roe = app and app.roe
+        if S.HIDDEN_STEP and roe and not roe.locate(why.id) then
+            local step = roe.unlock_text and roe.unlock_text(why.id)
+            return step and ('To unlock: ' .. step) or 'Unlocked by a step outside Records of Eminence'
+        end
         return 'Unlocked by the record "' .. (why.name or ('#' .. tostring(why.id))) .. '"'
     elseif why.kind == 'unity' then
         return 'Offered only to one Unity, which is not yours'
@@ -203,7 +216,22 @@ function S.content(b, ctx)
             y = y + kit.LINE
         end
     end
+    -- a wiki page of the record's own (the RoE quests: "Impermanence", "Panta Rhei"): drawn here as a guide draws its walkthrough,
+    -- its header leaving out what the details above already say (the description, the rewards, the repeat flag)
+    if app.walkthrough then
+        ctx.card = S.card(o)
+        ctx.progress = nil
+        local h = app.walkthrough(b, ctx, {cat = 'record', area = 'roe', id = p.id}, y, w)
+        if h then return h + 10 end
+    end
     return y + 10
+end
+
+-- the "card" a record page's header is checked against (ui/doc.lua D.head_hidden): the details block above prints the
+-- description, the rewards and the client's own repeat flag, so the wiki's rows for them are not drawn again; a fame of unknown
+-- level says nothing for a record and is left out too (`record`: ui/doc.lua D.head_hidden, rule 209)
+function S.card(o)
+    return {description = true, reward = true, record = true, printed = {repeatable = o.repeatable and 'Yes' or 'No'}}
 end
 
 -- The client's descriptions carry real newlines ("...complete \"Bat Hunt.\"\nRequirements: ...")
@@ -222,12 +250,27 @@ function S.overlay(b, ctx, hit, to_win)
         local x1, y1 = to_win(hit.x1, hit.y1)
         kit.frame(b, x0, y0, x1, y1, C.hover_edge)
         b:rect(x0 + 1, y0 + 1, x1 - 1, y1 - 1, {255, 255, 255, 22})
+    elseif ctx.app.walkthrough_overlay then
+        ctx.app.walkthrough_overlay(b, ctx, hit, to_win)
     end
+end
+
+-- the page's own hooks, as the guide screen has them: its links' tooltips, its sticky tab bar, a picture scrolled into view
+function S.tooltip(b, ctx, hit, to_win)
+    if hit.id ~= 'xlink' and ctx.app.walkthrough_tooltip then ctx.app.walkthrough_tooltip(b, ctx, hit, to_win) end
+end
+function S.sticky(b, ctx)
+    if ctx.app.walkthrough_sticky then ctx.app.walkthrough_sticky(b, ctx) end
+end
+function S.scrolled(ctx)
+    return ctx.app.walkthrough_view ~= nil and ctx.app.walkthrough_view(ctx) or false
 end
 
 function S.click(hit, ctx, app)
     if common.click(hit, ctx, app) then return end
-    if hit.id == 'xlink' then
+    if hit.id ~= 'xlink' then
+        if app.walkthrough_click then app.walkthrough_click(hit, ctx) end
+    elseif hit.id == 'xlink' then
         -- A cross-link is a step forward inside Chronicle, not a jump in from a command, so it
         -- pushes: a right click comes back to this record. App:entry would replace the stack
         -- with Home > the quest's own area, and back would land you in a section you were never

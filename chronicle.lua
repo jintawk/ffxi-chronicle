@@ -175,7 +175,11 @@ local function show_screen(scroll)
     if not win then return end
     pages.close()                       -- first: it keeps the scroll the page is left at
     win:set_screen(screens[app.view.name] or screens.home, scroll)
-    if app.view.name == 'guide' and pages.open(app.view.params) then
+    -- a page for the entry: a quest or mission's guide, or a Records objective with a wiki page of its own
+    -- (record|roe|<id>, the RoE quests); the record screen draws it under its details
+    local pp = app.view.name == 'guide' and app.view.params
+        or app.view.name == 'robj' and {cat = 'record', area = 'roe', id = app.view.params.id}
+    if pp and pages.open(pp) then
         win:flush()
         local y = pages.saved_scroll()
         if y then win:scroll_to(y) end

@@ -13,6 +13,7 @@
         roe.status(oid)                 completed | repeat | active | not_started | locked
         roe.progress(oid)               the server's count for a slotted objective, else nil
         roe.locked(oid)                 nil, or why it is not offered
+        roe.unlock_text(id)             what the player does to set a hidden gate record (roe/unlocks.lua), else nil
         roe.summary()                   overall, and one entry per category
         roe.sub_summary(ci, si)         one sub-category
         roe.in_progress()               the active slots, each with name, goal and count
@@ -40,6 +41,8 @@ local roe = {}
 local dir = ''
 local index = nil
 local index_tried = false
+roe.SPECIFIC_WHY = true      -- roe.locked names the deepest failing gate (see there)
+local unlocks, unlocks_tried = nil, false     -- roe/unlocks.lua, read the first time a hidden gate is asked about
 local cats = {}                 -- loaded category files, by index
 local CATS_KEPT = 2             -- how many category files stay in the heap
 local order = {}                -- most recently used first
@@ -77,6 +80,7 @@ function roe.generation() return gen end
 function roe.attach(d)
     dir = d or ''
     index, index_tried, cats, order, where = nil, false, {}, {}, nil
+    unlocks, unlocks_tried = nil, false
     dirty()
 end
 
@@ -100,6 +104,16 @@ function roe.index()
         end
     end
     return index
+end
+
+-- The step that sets a hidden gate record: the client gates some objectives on records no menu shows, named for the developers
+-- ("Scenarios 15"), so the record screen names the step instead (roe/unlocks.lua, from BG-wiki). nil for an id the table lacks.
+function roe.unlock_text(id)
+    if not unlocks_tried then
+        unlocks_tried = true
+        unlocks = read('roe/unlocks.lua')
+    end
+    return unlocks and unlocks[id] or nil
 end
 
 function roe.ready() return roe.index() ~= nil end
@@ -215,6 +229,9 @@ end
 
 function roe.has_live_data() return state.bits:complete() end
 
+-- the caches are rebuilt from the state: a switch such as roe.SPECIFIC_WHY was flipped (tests)
+function roe.invalidate() dirty() end
+
 -- A different character has different records: nothing survives a login or a logout.
 function roe.reset()
     state.sparks, state.deeds, state.bytes, state.unity = nil, nil, nil, nil
@@ -287,7 +304,13 @@ function roe.locked(oid)
     local out = {}
     local c = ix.cats[ci]
     local s = c.subs[si]
-    if check_list(c.g, out) and check_list(s.g, out) and check_list(ix.gates[oid], out) then
+    -- The reason given is the most specific gate that fails: the objective's own, then its sub-category's, then its category's.
+    -- A deeper gate implies the shallower ones (A Thousand Cuts' "800 unique objectives, the Brown Envelope" comes long after its
+    -- list's "50 unique objectives"), and the first failure on the tree path named the list's gate on every record in it.
+    -- roe.SPECIFIC_WHY = false is the order before.
+    local first, second, third = ix.gates[oid], s.g, c.g
+    if not roe.SPECIFIC_WHY then first, third = third, first end
+    if check_list(first, out) and check_list(second, out) and check_list(third, out) then
         cache.lock[oid] = false
         return nil
     end

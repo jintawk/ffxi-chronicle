@@ -148,6 +148,16 @@ do
         and D.head_hidden(field('Pack', '  none '), 'T'))
     check('head_hidden: a break span only is empty', D.head_hidden(field('Pack', nil, {{t = 'br'}}), 'T') == true)
     check('head_hidden: a value stays', D.head_hidden(field('Pack', 'Dagger'), 'T') == false)
+    -- rule 209: a record page's card leaves out a fame of unknown level, keeps a known one; a quest page's card keeps both
+    local rec = {description = true, reward = true, record = true, printed = {repeatable = 'Yes'}}
+    local unknown = {key = 'Required Fame', spans = {{t = 'link', s = 'Jeuno'}, {t = 'text', s = ' Fame Level: '}, {t = 'text', s = 'Unknown'}}}
+    local nine = {key = 'Required Fame', spans = {{t = 'link', s = 'Adoulin'}, {t = 'text', s = ' Fame Level: 9'}}}
+    check('rule 209: a record page leaves out "Jeuno Fame Level: Unknown"', D.head_hidden(unknown, 'T', rec) == true)
+    check('rule 209: a record page keeps "Adoulin Fame Level: 9"', D.head_hidden(nine, 'T', rec) == false)
+    check('rule 209: a record page leaves out the wiki Repeatable row, even one that differs (the client flag is above it)',
+          D.head_hidden({key = 'Repeatable', spans = {{t = 'text', s = 'No'}}}, 'T', rec) == true)
+    check('rule 209: a card without the flag keeps the unknown fame (the rule off, the fail before)',
+          D.head_hidden(unknown, 'T', {printed = {}}) == false)
     check('head_hidden: an icon is a value', D.head_hidden(field('Pack', nil, {{t = 'icon', icon = 'item', id = 5}}), 'T') == false)
     check('head_hidden: "None" in a tab panel stays when there is no card', D.head_hidden(none, nil) == false)
     check('head_hidden: Name of a panel', D.head_hidden(field('Name', 'X'), nil) == true)

@@ -733,7 +733,7 @@ end
 
 -- The metadata of one area: {data = name -> entry, norm = normalised -> entry}.
 local function area_meta(cat, area)
-    if not area then return nil end
+    if not area or not cache[cat] then return nil end      -- a Records page (record|roe|id) has no v1 metadata
     local c = cache[cat][area]
     if not c then
         local t = read('meta/' .. cat .. 's/' .. area .. '.lua') or {}

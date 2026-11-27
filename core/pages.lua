@@ -35,6 +35,7 @@ local STATE_FILE = 'data/pages.lua'     -- the old shared file: read for a chara
 local app, win, N, dir = nil, nil, nil, ''
 local index = nil
 local cur = nil         -- {key, doc, tabs = {[group] = i}, scroll = {page = y}, names, strip = {[group] = y}}
+local by_title = nil     -- the record pages by wiki title (pages.record_by_title)
 local saved = nil       -- data/pages.lua
 
 local function read(rel)
@@ -256,6 +257,7 @@ pages._forget = function(d) saved, saved_for = nil, nil if d then dir = d end en
 function pages.attach(a, w, native, d)
     app, win, N, dir = a, w, native, d or ''
     index = read('pages/index.lua') or {}
+    by_title = nil
     local okm, meta = pcall(require, 'core/meta')
     if okm and type(meta) == 'table' and meta.set_page_index then meta.set_page_index(index) end      -- read once (review CORE-8)
     local ok, net = pcall(require, 'core/net')
@@ -270,7 +272,7 @@ function pages.attach(a, w, native, d)
 end
 
 -- tests only: render other pages under these keys (the QA calibration's known-bad pages)
-function pages.set_index(t) index = t end
+function pages.set_index(t) index = t by_title = nil end
 
 -- -> the page's file for an entry, or nil
 function pages.find(p)
@@ -280,7 +282,27 @@ end
 
 -- where a link goes: 'this page' (one of its own tabs), 'Chronicle', 'the browser' (an address outside
 -- the wiki) or 'BG-wiki'
+-- The Records objectives with a page (record|roe|<id>), by the page's wiki title: the wiki names some of them as quests of their own
+-- ("To Kill Mocking Birds" is the record Grudge, "Teleports by Twilight" is Telepoint Pilgrimage), and the pages link to each other by
+-- those names. Read once, on the first link asked about; the lowest id wins for a page several records share (Ygnas Directive 1-6).
+-- (by_title is declared with the module state above)
+local function norm_title(s) return (s or ''):gsub('_', ' '):lower() end
+function pages.record_by_title(title)
+    if not by_title then
+        by_title = {}
+        for k, path in pairs(index or {}) do
+            local id = tonumber(k:match('^record|roe|(%d+)$'))
+            local t = id and read(path)
+            local key = t and type(t.page) == 'string' and norm_title(t.page)
+            if key and (not by_title[key] or id < by_title[key]) then by_title[key] = id end
+        end
+    end
+    return by_title[norm_title(title)]
+end
+
 local function target(sp)
+    local rid = sp.kind ~= 'item' and sp.kind ~= 'ki' and app.roe and pages.record_by_title(sp.to or sp.s)
+    if rid then return 'Chronicle', {record = rid} end
     if sp.kind == 'mission' or sp.kind == 'quest' then
         local name = (sp.name or sp.s):lower()
         if cur and (cur.names[name] or cur.names[sp.s:lower()]) then return 'this page', cur.names[name] or cur.names[sp.s:lower()] end
@@ -323,11 +345,12 @@ function pages.open(p)
     cur = {key = key, doc = doc, tabs = st.tabs or {}, scroll = st.scroll or {}, names = D.tab_names(doc)}
 
     app.walkthrough = function(b, ctx, params, y, w)
-        local entry = ctx.app and ctx.app.guide_entry and ctx.app:guide_entry(params)
+        -- the card the header must not repeat: the guide's (from the entry), or one the screen passes (a Records objective's details)
+        local entry = not ctx.card and ctx.app and ctx.app.guide_entry and ctx.app:guide_entry(params)
         -- textures only for the pictures near the view (core/pics.lua): a quarter of a view above it, a view and three quarters below
         local sc, vh = ctx.scroll or 0, ctx.vh or 0
         local view = {y0 = sc - vh * 0.25, y1 = sc + vh * 1.75}
-        local opts = {tabs = cur.tabs, pics = pics.get, card = card.shown(entry), view = view,
+        local opts = {tabs = cur.tabs, pics = pics.get, card = ctx.card or card.shown(entry), view = view,
             progress = ctx.progress}     -- step checkboxes (ui/doc.lua); plain data, so it joins the memo key
         -- the memo: the same key, no picture changed, the same pictures near the view -> the last drawing, its hits and block tops
         -- (no picture pass either: the textures the last layout asked for are still held, nothing freed them)
@@ -402,6 +425,8 @@ function pages.open(p)
             local where, arg = target(sp)
             if where == 'this page' then
                 set_tab(arg.group, arg.i, true)
+            elseif where == 'Chronicle' and type(arg) == 'table' and arg.record then
+                app:roe_objective(arg.record, win.scroll, true)        -- a step forward: back returns to this page
             elseif where == 'Chronicle' then
                 app:go('guide', {cat = sp.kind, area = arg, name = app:link_name(sp.kind, arg, sp.name or sp.s)}, win.scroll)
             else
