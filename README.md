@@ -285,12 +285,14 @@ can run together whatever versions they were built against.
 If a game update moves the code it hooks, it patches nothing and draws nothing rather than guessing,
 and `//cr status` reports why.
 
-The controller comes from the same library. No Windower API gives an addon the controller, so nui hooks the one
-function the game reads an XInput pad with, `XInputGetState`, once per process, in the form Windows itself uses
-for hot patches. Any addon built on nui shares that one hook. While no addon holds the controller, the hook only
-looks: the game gets exactly what it read. If the function is not where and what nui expects (another tool has
-hooked it, say), nui leaves it alone and `//cr pad status` says so. If Chronicle stops answering, the game gets
-its controller back by itself within a quarter of a second.
+The controller comes from the same library. No Windower API gives an addon the controller, so nui hooks the
+game's own XInput read, once per process. It changes one instruction of the game's XInput wrapper in
+`FFXiMain.dll`, which it finds by its byte signature, the way it finds the `EndScene` wrapper. That works with
+every build of `xinput1_3.dll`. If a game update changes that wrapper, nui hot-patches
+`xinput1_3.dll!XInputGetState` instead, where that DLL allows it. Any addon built on nui shares that one hook.
+While no addon holds the controller, the hook only looks: the game gets exactly what it read. If nui does not
+find either place as it expects, it patches nothing, and `//cr pad status` says why. If Chronicle stops
+answering, the game gets its controller back by itself within a quarter of a second.
 
 ## Upgrading from version 1
 
