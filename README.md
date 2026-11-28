@@ -257,6 +257,10 @@ K no longer takes the keys, and the Settings screen has the same switch.
 
 Every command is also a setting on the Settings screen.
 
+A game macro can run any of these commands. Write the line with `/con` in front, without the two slashes, for
+example `/con cr show` or `/con cr nav`. Then a macro key, or the macro palette on the controller, opens Chronicle.
+`//cr show` does not work in a macro.
+
 ## What is tracked
 
 Two different things are tracked, and it is worth being clear about the difference.
