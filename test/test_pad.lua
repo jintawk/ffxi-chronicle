@@ -336,6 +336,33 @@ do
     check('xinput off: no guess about a pad button', chat_line(env, 'press a pad button') == nil)
 end
 
+-- nui 1.5.0 joins the client's XInput wrapper at once, also with Enable XInput off: //cr pad still says why it cannot take
+-- the pad while the client has not loaded its XInput shim, and takes it once the shim is there
+do
+    local env = shown({fake = {pad_route = 'wrapper', pad_shim = false,
+                       pad_config = {key = 'test', padmode = '1,0,1,1,0,0', padsin = ''}}})
+    env.frame()
+    check('wrapper, xinput off: joined', env.N.pad_joined)
+    env.cmd('pad')
+    check('wrapper, xinput off: not taken', not env.N.pad_holding)
+    check('wrapper, xinput off: //cr pad says the config has it off', chat_line(env, 'Enable XInput is off') ~= nil)
+end
+do
+    local env = shown({fake = {pad_route = 'wrapper', pad_shim = false,
+                       pad_config = {key = 'test', padmode = '1,0,1,1,0,1', padsin = ''}}})
+    env.frame()
+    env.cmd('pad')
+    check('wrapper, no shim yet: not taken', not env.N.pad_holding)
+    check('wrapper, no shim yet: //cr pad says so', chat_line(env, 'has not loaded its XInput shim') ~= nil)
+end
+do
+    local env = shown({fake = {pad_route = 'wrapper', pad_shim = true,
+                       pad_config = {key = 'test', padmode = '1,0,1,1,0,1', padsin = ''}}})
+    env.frame()
+    env.cmd('pad')
+    check('wrapper, shim loaded: //cr pad takes it', env.N.pad_holding)
+end
+
 -- with the controller off, status says so and shows no config line
 do
     local env = shown({settings = {visible_on_load = false, pad = false}, fake = {pad_config = {key = 'test'}}})

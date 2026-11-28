@@ -105,6 +105,7 @@ function H.fake_native(opts)
     function N.wtwatch() return true end
     -- the controller (nui 1.3.0): N.padstate is what the game "read" (set its fields and bump seq), N.pad_holding the capture.
     -- opts.pad_fail: pad_start fails with that message (opts.pad_retry_ms: and asks to be retried); opts.pad_config: pad_config()
+    -- opts.pad_route, opts.pad_shim: pad_status().route and .shim (nui 1.5.0; default 'export', no shim field)
     N.padstate = {seq = 1, buttons = 0, lt = 0, rt = 0, lx = 0, ly = 0, rx = 0, ry = 0}
     N.pad_holding, N.pad_joined, N.captures, N.pad_starts = false, false, 0, 0
     function N.pad_start()
@@ -121,7 +122,10 @@ function H.fake_native(opts)
     function N.pad_capture(on) N.pad_holding = on and true or false N.captures = N.captures + 1 return true end
     function N.pad_chord(b) N.chord = b return true end
     function N.pad_config() return opts.pad_config end
-    function N.pad_status() return {state = 'live', describe = 'fake pad', reads = 0, holding = N.pad_holding} end
+    function N.pad_status()
+        return {state = 'live', describe = 'fake pad', reads = 0, holding = N.pad_holding, route = opts.pad_route or 'export',
+                shim = opts.pad_shim}
+    end
     function N.pad_stop() N.pad_joined, N.pad_holding = false, false return 'stopped' end
     return N
 end

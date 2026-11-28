@@ -279,7 +279,8 @@ local function pad_read_config()
     padc.conflicts = pad.chord_conflicts(padc.cfg)
 end
 
--- join the hook; while xinput1_3.dll is not loaded it is tried again every few seconds, quietly
+-- join the hook. On the client's own XInput wrapper (nui 1.5.0) that works at once. On the fallback, while xinput1_3.dll is
+-- not loaded, it is tried again every few seconds, quietly
 local function pad_join(now)
     if padc.joined then return true end
     if not (nui.N and nui.N.pad_start) then padc.why = '_chronicle.dll has no controller support' return false end
@@ -384,6 +385,15 @@ local function pad_tick(now)
             win:pad_scroll(whole)
         end
     end
+end
+
+local XINPUT_OFF = 'Enable XInput is off in the FFXI Config (Gamepad), so the game reads the pad with DirectInput, ' ..
+    'which Chronicle cannot read yet. Turn it on to use the controller here'
+
+-- nui 1.5.0, on the client's XInput wrapper: the client has not loaded its XInput shim, so no pad state can arrive
+local function pad_no_shim()
+    local st = nui.N and nui.N.pad_status and nui.N.pad_status()
+    return type(st) == 'table' and st.route == 'wrapper' and st.shim == false
 end
 
 local function pad_status_lines()
@@ -788,12 +798,15 @@ windower.register_event('addon command', function(...)
         elseif not pad_join(os.clock()) then
             local why = tostring(padc.why)
             if padc.xinput == false then         -- the game's own config says so: no guessing between the two causes
-                why = why .. '. Enable XInput is off in the FFXI Config (Gamepad), so the game reads the pad with ' ..
-                    'DirectInput, which Chronicle cannot read yet. Turn it on to use the controller here'
+                why = why .. '. ' .. XINPUT_OFF
             elseif why:find('not loaded', 1, true) then
                 why = why .. '. Turn on Enable XInput in the FFXI Config (Gamepad), or press a pad button first'
             end
             say('controller: ' .. why, 167)
+        elseif pad_no_shim() then
+            -- nui 1.5.0 joins the client's XInput wrapper before the client loads its XInput shim, and in DirectInput mode
+            say('controller: ' .. (padc.xinput == false and XINPUT_OFF
+                or 'the game has not loaded its XInput shim (xinputdll.dll) yet. Try again in a moment'), 167)
         else
             local _, b = nui.N.pad()
             pad_take(b or 0)
