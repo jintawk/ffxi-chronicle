@@ -191,29 +191,34 @@ also works for a pad that Steam Input, DS4Windows or reWASD maps to keys.
 | Page Up / Page Down | A page up or down |
 | Home / End | The top or the bottom of the page |
 
-While Chronicle has the keys, the game gets no key at all, so you cannot chat or use a macro until you give
-the keys back. Windower lets an addon keep the whole keyboard from the game, but not one key. The search box works
-the same way: while it has focus, the game gets none of what you type, so a letter no longer opens a game menu.
+While Chronicle has the keys, it keeps only those keys and K from the game. You can still chat, use a macro,
+press an F key or run a Windower bind. The search box is different: while it has focus, the game gets none of what
+you type. So a letter does not open a game menu, and Space or / does not open the chat line.
+
+Chronicle keeps single keys from the game with its own DLL, from `_chronicle.dll` 2.1.5. The DLL may not find the
+game's keyboard reads, for example after a game update. Then Chronicle keeps the whole keyboard from the game while it
+has the keys, as it did before. `//cr nav status` says which way it works, and why.
 
 K takes nothing while the chat line is open, so you can still type a K in chat. K with Ctrl or Alt held does
-nothing in Chronicle.
+nothing in Chronicle. The other keys follow the same rule. While the chat line is open, or while you hold Ctrl or
+Alt, they go to the game. So Enter sends your chat line, and your Ctrl and Alt macros work.
 
 The keys follow the same rules as the controller. A key you were already holding when you pressed K still belongs
 to the game until you let go of it. A key you pressed while Chronicle had the keys stays away from the game until
-you let go of it, even if you give the keys back first. If Windower loses a key's release, Chronicle gives the
-keyboard back after 2 seconds anyway. A key held for longer than half a second when you press K reaches the game
-as released.
+you let go of it, even if you give the keys back first. The whole-keyboard block (for the search box, or without
+the hook) has two limits. If Windower loses a key's release, Chronicle gives the keyboard back after 2 seconds anyway.
+A key held for longer than half a second when the block starts reaches the game as released.
 
 Chronicle holds the controller and the keyboard separately, and they move the same cursor. L3 + R3 does not take
 the arrow keys, and K does not take the controller. The line at the bottom of the window names the
 keys of whichever one you used last.
 
 With "Hide on Back" on, Backspace or Escape on a section's home hides the window. Chronicle gives back the keys,
-and the controller too if it has it. The keyboard stays blocked until you let go of the key, so the game never sees
-it. K shows the window again and takes the keys. K and `//cr nav` never hide the window.
+and the controller too if it has it. That Backspace or Escape stays away from the game until you let go of it. K
+shows the window again and takes the keys. K and `//cr nav` never hide the window.
 
-Chronicle gives the keys back when you hide the window, log out, unload it, or switch to another window. If the
-keyboard ever seems stuck, switch to another window and back.
+Chronicle gives the keys back when you hide the window or log out. It also gives them back when you unload it or
+switch to another window. If the keyboard ever seems stuck, switch to another window and back.
 K is the default nav key. To use another key, click "Keyboard key" on the Settings screen and press the key you
 want, with Ctrl, Alt or Shift if you like. Escape keeps the old key.
 
@@ -222,9 +227,9 @@ want, with Ctrl, Alt or Shift if you like. Escape keeps the old key.
 moves the cursor needs Ctrl, Alt or Shift with it. The hint line and the rest of this section then mean your key
 where they say K.
 
-`//cr nav` also does what K does. While Chronicle has the keys, Windower runs no bind, so a Windower `bind` for
-`//cr nav` cannot give the keys back. Choose the key in Chronicle instead. With `//cr nav off`, K no longer takes the
-keys, and the Settings screen has the same switch.
+`//cr nav` also does what K does, so a Windower `bind` for `//cr nav` takes the keys and gives them back. Without the
+hook, Windower runs no bind while Chronicle has the keys, so there the bind cannot give them back. With `//cr nav off`,
+K no longer takes the keys, and the Settings screen has the same switch.
 
 ## Commands
 
@@ -245,7 +250,7 @@ keys, and the Settings screen has the same switch.
 | `//cr uncompletable` | Show quests that can no longer be done |
 | `//cr pad [on \| off \| status]` | Take or give back the controller (as L3 + R3), turn it on or off, or say why it is not working |
 | `//cr pad chord [name]` | Name the chord that takes the controller, or choose two other buttons (`lb+rb`) |
-| `//cr nav [on \| off \| key <name>]` | Take or give back the keyboard's arrow keys (as K), turn K on or off, or choose another key |
+| `//cr nav [on \| off \| status \| key <name>]` | Take or give back the keyboard's arrow keys (as K), turn K on or off, say how Chronicle keeps the keys from the game, or choose another key |
 | `//cr q [area]` / `m [area]` | Summaries in the chat log |
 | `//cr status` | Drawing, memory and hook details |
 | `//cr progress` / `unknown` / `debug` / `help` | Diagnostics and help |

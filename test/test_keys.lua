@@ -447,6 +447,160 @@ do
     check('KEY-4: a setting that is no key falls back to K', tap(env, K) and win.pad_mode)
 end
 
+---------------------------------------------------------------------------------------------------------------------------
+-- nui 1.6.0: the key hook hides only Chronicle's keys, so nav mode sends no keyboard_blockinput. The search box and the
+-- "Keyboard key" row still block the whole keyboard (typed text reaches the chat line as window messages). Each rule has
+-- its own named check (HOOK-0 ...).
+local NAV_KEYS = {UP, DOWN, LEFT, RIGHT, ENTER, 0x9C, BKSP, ESC, TAB, PGUP, PGDN, HOME, END}
+local function hides(env, list)
+    for _, k in ipairs(list) do if not env.N.key_hidden[k] then return false end end
+    return true
+end
+local function hidden_count(env) local n = 0 for _ in pairs(env.N.key_hidden) do n = n + 1 end return n end
+do
+    local env, win, app = shown({fake = {key = true}})
+    local N = env.N
+    check('HOOK-0: joined on the first frame', N.key_joined and N.key_starts == 1, N.key_starts)
+    check('HOOK-1: the nav key is hidden while nav is on', N.key_hidden[K] and hidden_count(env) == 1, hidden_count(env))
+    key(env, K, true)
+    check('HOOK-2: K takes the keys: the nav keys are hidden at once (before the next frame)', win.pad_mode and hides(env, NAV_KEYS)
+        and hidden_count(env) == #NAV_KEYS + 1, hidden_count(env))
+    key(env, K, false)
+    env.frame()
+    check('HOOK-0: nav mode blocks nothing', blocks(env) == 0 and not env.blockinput, blocks(env))
+    check('HOOK-2: the arrows are still Chronicle\'s', tap(env, DOWN) and win.pad_mode)
+    local before = N.key_hides
+    for _ = 1, 5 do env.frame() end
+    check('HOOK-4: renewed every frame (the heartbeat)', N.key_hides >= before + 5, N.key_hides - before)
+    -- the chat line: nothing new hidden while it is open
+    env.chat_open = true
+    for _ = 1, 10 do env.frame(1 / 60) end
+    check('HOOK-5: chat open: nothing is hidden', hidden_count(env) == 0 and win.pad_mode, hidden_count(env))
+    local n_open = N.key_hides
+    env.frame(1 / 60)
+    check('HOOK-5: and the empty list is sent once, not every frame', N.key_hides == n_open)
+    env.chat_open = false
+    key(env, W_KEY, true)
+    check('HOOK-5: closed again: hidden again (the next key asks at once)', hides(env, NAV_KEYS) and N.key_hidden[K])
+    key(env, W_KEY, false)
+    -- Ctrl or Alt held: a macro, nothing new hidden
+    key(env, LCTRL, true)
+    check('HOOK-6: Ctrl held: neither the nav keys nor K are hidden', hidden_count(env) == 0, hidden_count(env))
+    check('HOOK-6: Ctrl + Down is the game\'s', not tap(env, DOWN))
+    key(env, LCTRL, false)
+    check('HOOK-6: Ctrl released: hidden again', hides(env, NAV_KEYS) and N.key_hidden[K])
+    -- the keys go back: K alone
+    tap(env, K)
+    check('HOOK-3: K gives the keys back: only K stays hidden', not win.pad_mode and N.key_hidden[K] and hidden_count(env) == 1,
+        hidden_count(env))
+    -- the search box blocks the whole keyboard, the hook or not
+    app:go('area', {cat = 'mission', area = 'cop'}, 0)
+    local sx, sy
+    for _, h in ipairs(win.chrome_b.hits) do
+        if h.id == 'search' then sx, sy = win.x + (h.x0 + h.x1) / 2, win.y + (h.y0 + h.y1) / 2 end
+    end
+    env.fire('mouse', 1, sx, sy, 0, false) env.fire('mouse', 2, sx, sy, 0, false)
+    env.frame()
+    check('HOOK-8: the search box focused: the whole keyboard is blocked', win.focus == 'search' and env.blockinput)
+    tap(env, ESC)
+    env.frame()
+    check('HOOK-8: left: unblocked', win.focus == nil and not env.blockinput)
+    -- the Settings row "Keyboard key" waits for any key: blocked too
+    app.prefs.change('nav_key')
+    env.frame()
+    check('HOOK-9: the Keyboard key row waiting: blocked', env.blockinput)
+    tap(env, ESC)
+    env.frame()
+    check('HOOK-9: done: unblocked', not env.blockinput)
+    -- the Settings row "Controller buttons" waits for two buttons: only Escape is hidden, nothing is blocked
+    for _ = 1, 3 do env.frame() end
+    app.prefs.change('pad_chord')
+    env.frame()
+    check('HOOK-10: the Controller buttons row waiting: Escape hidden, no block', N.key_hidden[ESC] and not env.blockinput,
+        tostring(env.blockinput))
+    tap(env, ESC)
+    env.frame()
+    check('HOOK-10: done: Escape no longer hidden', not N.key_hidden[ESC] and N.key_hidden[K])
+    -- a window that does not draw: the nav keys go to the game, K stays (it shows the window)
+    tap(env, K)
+    env.N.opts.drawing = false
+    for _ = 1, 70 do env.frame() end
+    key(env, W_KEY, true) key(env, W_KEY, false)
+    check('HOOK-12: not drawing: the nav keys are not hidden, K is', not N.key_hidden[DOWN] and N.key_hidden[K])
+    env.N.opts.drawing = nil
+    for _ = 1, 70 do env.frame() end
+    tap(env, K)
+    -- nav off: nothing hidden
+    env.cmd('nav', 'off')
+    env.frame()
+    check('HOOK-11: nav off: nothing hidden', hidden_count(env) == 0)
+    env.cmd('nav', 'on')
+    env.frame()
+    check('HOOK-11: nav on: K hidden again', N.key_hidden[K] and hidden_count(env) == 1)
+    -- the status says how the keys are kept
+    local lines = #env.chat
+    env.cmd('nav', 'status')
+    local said = table.concat(env.chat, '\n', lines + 1)
+    check('HOOK-16: //cr nav status names the hook', said:find("keys kept by nui's key hook", 1, true) ~= nil
+        and said:find('device Hook.dll', 1, true) ~= nil, said)
+    lines = #env.chat
+    env.cmd('status')
+    said = table.concat(env.chat, '\n', lines + 1)
+    check('HOOK-16: //cr status has the keyboard line', said:find("keys kept by nui's key hook", 1, true) ~= nil)
+    -- lose focus empties the list at once; unload leaves the hook
+    tap(env, K)
+    env.fire('lose focus')
+    check('HOOK-13: lose focus: nothing hidden at once', hidden_count(env) == 0)
+    env.fire('gain focus')
+    env.frame()
+    check('HOOK-13: gain focus: K hidden again', N.key_hidden[K])
+    env.fire('unload')
+    check('HOOK-14: unload leaves the key hook', not N.key_joined)
+end
+-- the nav key with Ctrl: hidden only while Ctrl is held
+do
+    local env, win = shown({fake = {key = true}, settings = {visible_on_load = false, nav_key = 'ctrl+n'}})
+    local N = env.N
+    check('HOOK-7: Ctrl+N: plain N is not hidden', not N.key_hidden[N_KEY] and hidden_count(env) == 0, hidden_count(env))
+    key(env, LCTRL, true)
+    check('HOOK-7: Ctrl held: N is hidden', N.key_hidden[N_KEY] and hidden_count(env) == 1)
+    tap(env, N_KEY)
+    check('HOOK-7: Ctrl+N takes the keys, the nav keys are not hidden while Ctrl is held', win.pad_mode and not N.key_hidden[DOWN])
+    key(env, LCTRL, false)
+    check('HOOK-7: Ctrl released: the nav keys hidden, N not', hides(env, NAV_KEYS) and not N.key_hidden[N_KEY])
+    check('HOOK-0: no block in nav mode with Ctrl+N either', blocks(env) == 0)
+end
+-- the fallback: nui refuses the hook, or the DLL has none
+do
+    local env, win = shown()
+    tap(env, K)
+    env.frame()
+    check('HOOK-15: refused: nav mode blocks the whole keyboard', win.pad_mode and env.blockinput)
+    local lines = #env.chat
+    env.cmd('nav', 'status')
+    local said = table.concat(env.chat, '\n', lines + 1)
+    check('HOOK-15: and the status says why', said:find('keys kept by keyboard_blockinput', 1, true) ~= nil
+        and said:find('were not found (fake)', 1, true) ~= nil, said)
+    check('HOOK-15: tried once, not every frame', env.N.key_starts == 1, env.N.key_starts)
+end
+do
+    local env, win = shown({fake = {no_key = true}})
+    tap(env, K)
+    env.frame()
+    check('HOOK-15: no key hook in the DLL: blocked as before', win.pad_mode and env.blockinput)
+    local lines = #env.chat
+    env.cmd('nav', 'status')
+    check('HOOK-15: the status says the DLL has none', table.concat(env.chat, '\n', lines + 1):find('has no keyboard hook', 1, true) ~= nil)
+end
+do
+    local env = shown({fake = {key = true, key_retry_ms = 1000}})
+    check('HOOK-17: asked to retry: not joined yet', not env.N.key_joined and env.N.key_starts == 1)
+    for _ = 1, 30 do env.frame(1 / 60) end
+    check('HOOK-17: not before the retry time', env.N.key_starts == 1)
+    env.frame(1)
+    check('HOOK-17: joined after it', env.N.key_joined and env.N.key_starts == 2 and env.N.key_hidden[K])
+end
+
 restore()
 print(('test_keys: %d passed, %d failed'):format(pass, fail))
 os.exit(fail == 0 and 0 or 1)

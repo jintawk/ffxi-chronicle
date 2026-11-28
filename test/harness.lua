@@ -53,7 +53,7 @@ function H.fake_native(opts)
         N.started = true
         return true, 'hooked'
     end
-    function N.stop() N.started = false N.layers = {} return 'stopped' end
+    function N.stop() N.started = false N.layers = {} if N.key_stop then N.key_stop() end return 'stopped' end   -- 1.6.0: stop() leaves the key hook
     function N.status()
         N.statuses = N.statuses + 1
         local n = 0
@@ -127,6 +127,33 @@ function H.fake_native(opts)
                 shim = opts.pad_shim}
     end
     function N.pad_stop() N.pad_joined, N.pad_holding = false, false return 'stopped' end
+    -- the key hook (nui 1.6.0). opts.key: key_start joins (otherwise it refuses, as when nui finds no keyboard reads, so the
+    -- tests that do not ask for it see the keyboard_blockinput fallback). opts.key_retry_ms: it asks to be retried first.
+    -- opts.no_key: the functions are missing (an older DLL). N.key_hidden: the codes of the last key_hide, as a set;
+    -- N.key_hides: how many calls; N.key_list: the last call's codes in order.
+    N.key_hidden, N.key_list, N.key_hides, N.key_starts, N.key_joined = {}, {}, 0, 0, false
+    if not opts.no_key then
+        function N.key_start()
+            N.key_starts = N.key_starts + 1
+            if opts.key_retry_ms and N.key_starts == 1 then return false, 'FFXiMain.dll is not loaded (fake)', opts.key_retry_ms end
+            if not opts.key then return false, "FFXiMain's keyboard reads were not found (fake)" end
+            N.key_joined = true
+            return true, 'hook installed (fake)'
+        end
+        function N.key_hide(...)
+            N.key_hides = N.key_hides + 1
+            N.key_hidden, N.key_list = {}, {...}
+            for _, c in ipairs(N.key_list) do N.key_hidden[c] = true end
+            return N.key_joined
+        end
+        function N.key_status()
+            local n = 0
+            for _ in pairs(N.key_hidden) do n = n + 1 end
+            return {state = N.key_joined and 'live' or 'blocked', describe = 'fake keys', joined = N.key_joined,
+                    hiding = n > 0, keys = n, device = 'Hook.dll'}
+        end
+        function N.key_stop() N.key_joined, N.key_hidden, N.key_list = false, {}, {} return 'stopped' end
+    end
     return N
 end
 

@@ -522,13 +522,19 @@ end
 -- and rate), whether or not Windower repeats the key-down.
 --
 -- Keeping keys from the game. In game (2026-11-27), returning true from the keyboard event kept no key from the game: the
--- arrows still turned the camera, and letters typed in the search box opened the game's menus. Windower's own
--- keyboard_blockinput 1 does keep every key from the game, and the keyboard event still sees them. So while the keys are held,
--- or the search box has focus, the whole keyboard is kept from the game (kbd_block). The block changes only while no key is
--- down, so the game never sees half a press:
+-- arrows still turned the camera, and letters typed in the search box opened the game's menus. Two things do keep keys:
+--   - nui's key hook (1.6.0, kbd_hide_sync): it hides only the keys Chronicle names, from the game's actions, after Windower
+--     has seen them. So chat, macros and Windower binds still work in nav mode. It hides the nav key, the nav keys while they
+--     are held, and Escape while the Settings row waits for two buttons. The hook's own rules keep a press whole: a press the
+--     game saw stays the game's, and a hidden press stays hidden, until its release.
+--   - Windower's keyboard_blockinput 1 (kbd_block): it keeps every key from the game, and the keyboard event still sees them.
+--     The search box and the Settings row "Keyboard key" use it, because typed text reaches the game's chat line as window
+--     messages, which the hook does not see. Without the hook (an older DLL, or nui refused it) it also covers nav mode.
+-- The block changes only while no key is down, so the game never sees half a press:
 --   - a key whose press the game saw stays the game's until its release (the block waits, at most BLOCK_WAIT_ON seconds)
 --   - a key pressed under the block stays away from the game until its release (the block stays, at most BLOCK_WAIT_OFF)
--- Losing focus and unloading lift the block at once. The handler still returns true for what it takes, as before.
+-- Losing focus and unloading lift the block and empty the hook's list at once. The handler still returns true for what it
+-- takes, as before.
 -- Which keys the driver acts on: the focused search box comes first; while the chat line is open, and with Ctrl or Alt held,
 -- no new press is taken (kbd.game: a press the game saw; kbd.took: a press the driver took).
 ---------------------------------------------------------------------------
@@ -541,7 +547,13 @@ local KEY_ACT = {
     [0xC9] = 'page_up', [0xD1] = 'page_down', [0xC7] = 'top', [0xCF] = 'bottom',
 }
 local kbd = {held = false, took = {}, game = {}, dir = nil, dir_key = nil, next_at = 0,
-             down = {}, ndown = 0, block = false, wait_since = nil}
+             down = {}, ndown = 0, block = false, wait_since = nil,
+             hook = nil, hook_why = nil, hook_retry = 0, hiding = false, hide_key = nil, hide_list = nil,
+             chat = false, chat_at = -1}
+local KEY_ACT_LIST = {}         -- the nav keys, for the key hook (sorted, so the list is the same every time)
+for dik in pairs(KEY_ACT) do KEY_ACT_LIST[#KEY_ACT_LIST + 1] = dik end
+table.sort(KEY_ACT_LIST)
+local CHAT_EVERY = 0.1          -- prerender asks the game about its chat line at most this often (each key asks too)
 local BLOCK_WAIT_ON = 0.5       -- a key the game saw, still held after this: the block starts anyway (the game sees it released)
 local BLOCK_WAIT_OFF = 2        -- a key still down after this (its release lost): the block ends anyway
 local KBD_HINT
@@ -657,10 +669,95 @@ local function kbd_set_block(on)
     windower.send_command('keyboard_blockinput ' .. (on and '1' or '0'))
 end
 
--- the block Chronicle wants: the keys held, or the search box focused, on a window that draws
+-- the block Chronicle wants: the search box focused or the Settings row "Keyboard key" waiting, on a window that draws. Without
+-- the key hook, also the keys held and the Settings row "Controller buttons" waiting.
 local function kbd_want_block()
-    return (kbd.held or kbd.capture or padc.wait or (win and win.focus ~= nil)) and win and win.visible and nui.drawing
-        and true or false
+    local typing = kbd.capture or (win and win.focus ~= nil)
+    local want = typing or (kbd.hook ~= true and (kbd.held or padc.wait))
+    return want and win and win.visible and nui.drawing and true or false
+end
+
+-- nui 1.6.0: join the key hook. True while it is joined. An older DLL, or a hook nui refuses, leaves the block to do the work.
+local function kbd_hook_join(now)
+    if kbd.hook ~= nil then return kbd.hook end
+    if now < kbd.hook_retry then return false end
+    if not (nui.N and nui.N.key_start) then
+        kbd.hook, kbd.hook_why = false, '_chronicle.dll has no keyboard hook'
+        return false
+    end
+    local ok, msg, retry_ms = nui.N.key_start()
+    if ok then kbd.hook, kbd.hook_why = true, nil return true end
+    kbd.hook_why = tostring(msg)
+    if retry_ms then kbd.hook_retry = now + retry_ms / 1000 else kbd.hook = false end
+    return false
+end
+
+-- the game's chat line: asked again on each key, and at most every CHAT_EVERY seconds from prerender
+local function kbd_chat(now, fresh)
+    if fresh or now - kbd.chat_at >= CHAT_EVERY or now < kbd.chat_at then
+        kbd.chat, kbd.chat_at = chat_open(), now
+    end
+    return kbd.chat
+end
+
+-- What the hook should hide now, as bits: 1 the nav key, 2 the nav keys, 4 Escape. The same rules as kbd_down: nothing new
+-- while the chat line is open; the nav key only with its own Ctrl and Alt; the nav keys only while held, with neither Ctrl nor
+-- Alt, on a window that draws. Escape while the Settings row waits for two buttons, whatever else holds.
+local function kbd_hide_want(now, fresh)
+    local s = padc.wait and 4 or 0
+    if settings.nav == false or kbd_chat(now, fresh) then return s end
+    local nk = kbd_key()
+    local ctrl, alt = keys.ctrl(), keys.alt()
+    if ctrl == nk.ctrl and alt == nk.alt and (keys.shift() or not nk.shift) then s = s + 1 end
+    if kbd.held and not (ctrl or alt) and win and win.visible and nui.drawing then s = s + 2 end
+    return s
+end
+
+-- the key codes for those bits (made once per bits and nav key, not every frame)
+local function kbd_hide_list(s)
+    local nk = kbd_key()
+    local id = s * 256 + nk.dik
+    if kbd.hide_key == id then return kbd.hide_list end
+    local t = {}
+    if s % 2 == 1 then t[#t + 1] = nk.dik end
+    if math.floor(s / 2) % 2 == 1 then for _, d in ipairs(KEY_ACT_LIST) do t[#t + 1] = d end end
+    if s >= 4 then t[#t + 1] = KEY_ESC end
+    kbd.hide_key, kbd.hide_list = id, t
+    return t
+end
+
+-- after every key and once a frame: the hook's list follows what is wanted. While it holds keys, every frame renews it (its
+-- heartbeat: a list not renewed for 250 ms lapses). When it holds none, it is emptied once.
+local function kbd_hide_sync(now, fresh)
+    if not kbd_hook_join(now) then return end
+    local s = kbd_hide_want(now, fresh)
+    if s == 0 then
+        if kbd.hiding then nui.N.key_hide() kbd.hiding = false end
+        return
+    end
+    nui.N.key_hide(unpack(kbd_hide_list(s)))
+    kbd.hiding = true
+end
+
+-- lose focus: nothing new is hidden while the game has no focus
+local function kbd_hide_clear()
+    if kbd.hook == true and kbd.hiding then nui.N.key_hide() end
+    kbd.hiding = false
+end
+
+-- How Chronicle keeps the keys, for //cr nav status and //cr status
+local function kbd_status_lines()
+    if settings.nav == false then say('keyboard off (//' .. ident.short .. ' nav on)') return end
+    local nk = kbd_key()
+    local st = kbd.hook == true and nui.N.key_status and nui.N.key_status()
+    if kbd.hook == true and type(st) == 'table' then
+        say(('keyboard %s (%s) | keys kept by nui\'s key hook: %s%s'):format(kbd.held and 'held' or 'ready', nk.label,
+            tostring(st.describe), (st.device and st.device ~= '') and (' | device ' .. st.device) or ''))
+        say('keyboard: the search box and the Keyboard key row block the whole keyboard (keyboard_blockinput)')
+    else
+        say(('keyboard %s (%s) | keys kept by keyboard_blockinput (the whole keyboard) | why: %s'):format(
+            kbd.held and 'held' or 'ready', nk.label, tostring(kbd.hook_why or 'the key hook is not joined yet')))
+    end
 end
 
 -- after every key and once a frame: the block follows what is wanted, but changes only while no key is down
@@ -682,6 +779,7 @@ local function kbd_reset()
 end
 local function kbd_unblock_now()
     if kbd.block then kbd_set_block(false) end
+    kbd_hide_clear()
 end
 
 -- textures: area emblems and the trophy, loaded once and kept (64 px: 16 KB each)
@@ -789,6 +887,7 @@ windower.register_event('keyboard', function(dik, down, flags, blocked)
     end
     local keep = kbd_event(dik, down, ch)
     kbd_block(os.clock())
+    kbd_hide_sync(os.clock(), true)        -- the next read already hides what this key changed (the nav key, Ctrl, Alt)
     if keep then return true end
 end)
 
@@ -807,6 +906,7 @@ end
 windower.register_event('prerender', function()
     -- the keyboard block first: an error further on must never keep the game's keyboard blocked
     if kbd.block or kbd.held or kbd.capture or padc.wait or (win and win.focus) then kbd_block(os.clock()) end
+    kbd_hide_sync(os.clock())
     pad_tick(os.clock())
     kbd_tick(os.clock())
     if not win then
@@ -986,6 +1086,7 @@ local function status()
         s.ui_found and (s.ui_w .. 'x' .. s.ui_h) or 'not found', us and ('%.3f'):format(us) or 'not reported',
         s.rt_w, s.rt_h, nui.view.f, nui.view.mode, nui.view.size, nui.view.mf or 1))
     pad_status_lines()
+    kbd_status_lines()
     if win then
         local st = win.stats
         say(('window %dx%d at %d,%d | sent chrome %d content %d overlay %d, %d unchanged not sent | last layout %.1f ms'):format(
@@ -1009,7 +1110,7 @@ local HELP = {
     '  //%s uncompletable   toggle uncompletable quests',
     '  //%s pad [on | off | status]   take the controller (L3+R3, or your chord, does too)',
     '  //%s pad chord [name]   the two buttons that take it: l3+r3, lb+rb, back+start ...',
-    '  //%s nav [on | off | key <name>]   take the keyboard\'s arrows (the nav key, K, does too)',
+    '  //%s nav [on | off | status | key <name>]   take the keyboard\'s arrows (the nav key, K, does too)',
     '  //%s q [area] | m [area]   summaries in chat',
     '  //%s progress [log | debug]   quest step progress',
     '  //%s unknown | debug | status | help',
@@ -1155,6 +1256,8 @@ windower.register_event('addon command', function(...)
             save()
             if a == 'off' then kbd_give() kbd.capture = false end
             say('keyboard ' .. a .. (a == 'on' and (' (' .. kbd_key().label .. ' takes the arrows)') or ''))
+        elseif a == 'status' then
+            kbd_status_lines()
         elseif settings.nav == false then
             say('keyboard off (//' .. ident.short .. ' nav on)', 167)
         elseif kbd.held then
