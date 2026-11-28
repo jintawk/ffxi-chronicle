@@ -283,6 +283,94 @@ do
     check('KEYS-D: an arrow is the game\'s while the window does not draw', not tap(env, DOWN))
 end
 
+---------------------------------------------------------------------------------------------------------------------------
+-- keeping keys from the game: returning true does not do it in game, so the whole keyboard is blocked (keyboard_blockinput)
+-- while the keys are held or the search box has focus; the block changes only while no key is down
+local function blocks(env)
+    local n = 0
+    for _, c in ipairs(env.commands) do if c:find('^keyboard_blockinput') then n = n + 1 end end
+    return n
+end
+do
+    local env, win, app = shown()
+    for _, k in ipairs({DOWN, UP, ENTER, PGDN, W_KEY}) do tap(env, k) end
+    for _ = 1, 30 do env.frame() end
+    check('BLOCK-0: never used, nothing is sent', blocks(env) == 0, blocks(env))
+    check('BLOCK-1: K held: not blocked yet (the game saw K go down)', key(env, K, true) and not env.blockinput)
+    key(env, K, false)
+    check('BLOCK-1: K released: the keyboard is blocked', env.blockinput and win.pad_mode)
+    key(env, K, true)
+    check('BLOCK-2: K gives the keys back, still blocked while K is down', not win.pad_mode and env.blockinput)
+    key(env, K, false)
+    check('BLOCK-2: K released: unblocked', not env.blockinput)
+    -- a key the game saw, held when K takes the keys
+    key(env, W_KEY, true)
+    tap(env, K)
+    check('BLOCK-3: a key the game saw is held: not blocked yet', win.pad_mode and not env.blockinput)
+    env.frame(0.1)
+    key(env, W_KEY, false)
+    check('BLOCK-3: it is released: blocked', env.blockinput)
+    tap(env, K)
+    key(env, W_KEY, true)
+    tap(env, K)
+    for _ = 1, 40 do env.frame(1 / 60) end
+    check('BLOCK-4: held past the wait, the block starts anyway', env.blockinput)
+    key(env, W_KEY, false)
+    -- a key pressed under the block, held when the keys go back
+    check('BLOCK-5: an arrow pressed under the block', key(env, DOWN, true) and env.blockinput)
+    tap(env, K)
+    check('BLOCK-5: the keys went back, still blocked while it is down', not win.pad_mode and env.blockinput)
+    env.frame(0.5)
+    check('BLOCK-5: still blocked a moment later', env.blockinput)
+    key(env, DOWN, false)
+    check('BLOCK-5: released: unblocked', not env.blockinput)
+    -- a key whose release was lost does not block the keyboard for good
+    tap(env, K)
+    key(env, DOWN, true)
+    tap(env, K)
+    for _ = 1, 150 do env.frame(1 / 60) end
+    check('BLOCK-6: a key still down after the wait: unblocked anyway', not env.blockinput)
+    key(env, DOWN, false)
+    -- the search box: letters typed there no longer open the game's menus
+    app:go('area', {cat = 'mission', area = 'cop'}, 0)
+    local sx, sy
+    for _, h in ipairs(win.chrome_b.hits) do
+        if h.id == 'search' then sx, sy = win.x + (h.x0 + h.x1) / 2, win.y + (h.y0 + h.y1) / 2 end
+    end
+    env.fire('mouse', 1, sx, sy, 0, false) env.fire('mouse', 2, sx, sy, 0, false)
+    env.frame()
+    check('BLOCK-7: the search box focused: blocked', win.focus == 'search' and env.blockinput)
+    key(env, ESC, true)
+    check('BLOCK-7: Escape leaves the box, still blocked while it is down', win.focus == nil and env.blockinput)
+    key(env, ESC, false)
+    check('BLOCK-7: released: unblocked', not env.blockinput)
+    -- the ways out that cannot wait
+    env.fire('mouse', 1, sx, sy, 0, false) env.fire('mouse', 2, sx, sy, 0, false)
+    env.frame()
+    key(env, W_KEY, true)
+    check('BLOCK-8: typing in the box, blocked', env.blockinput)
+    env.fire('lose focus')
+    check('BLOCK-8: lose focus unblocks at once, with a key down and the box focused', not env.blockinput)
+    env.fire('gain focus')
+    win.focus = nil
+    tap(env, K)
+    check('BLOCK-9: taken again', env.blockinput)
+    env.cmd('hide')
+    check('BLOCK-9: hide unblocks', not env.blockinput)
+    env.cmd('show')
+    tap(env, K)
+    key(env, DOWN, true)
+    env.fire('unload')
+    check('BLOCK-10: unload unblocks at once, with a key down', not env.blockinput)
+end
+do
+    local env, win = shown({fake = {drawing = false}})
+    for _ = 1, 70 do env.frame() end
+    tap(env, K)
+    for _ = 1, 5 do env.frame() end
+    check('BLOCK-11: a window that does not draw blocks nothing', blocks(env) == 0 and not env.blockinput)
+end
+
 restore()
 print(('test_keys: %d passed, %d failed'):format(pass, fail))
 os.exit(fail == 0 and 0 or 1)

@@ -417,13 +417,20 @@ local function pad_status_lines()
 end
 
 ---------------------------------------------------------------------------
--- The keyboard: K takes the keys below from the game and drives the same cursor as the controller; K again gives them back.
--- The pad and the keyboard are held on their own (one cursor, two holds). The rules for a press, as for the search box (review
--- UI-4) and the pad:
---   - a key whose press the game saw stays the game's until its release, also when K takes the keys meanwhile (kbd.game)
---   - a key Chronicle took stays Chronicle's until its release, also when the keys go back meanwhile (kbd.took)
---   - the focused search box comes first; while the chat line is open, and with Ctrl or Alt held, no new press is taken
--- A held arrow repeats on Chronicle's own clock (the pad's delay and rate), whether or not Windower repeats the key-down.
+-- The keyboard: K takes the keys below and drives the same cursor as the controller; K again gives them back. The pad and
+-- the keyboard are held on their own (one cursor, two holds). A held arrow repeats on Chronicle's own clock (the pad's delay
+-- and rate), whether or not Windower repeats the key-down.
+--
+-- Keeping keys from the game. In game (2026-11-27), returning true from the keyboard event kept no key from the game: the
+-- arrows still turned the camera, and letters typed in the search box opened the game's menus. Windower's own
+-- keyboard_blockinput 1 does keep every key from the game, and the keyboard event still sees them. So while the keys are held,
+-- or the search box has focus, the whole keyboard is kept from the game (kbd_block). The block changes only while no key is
+-- down, so the game never sees half a press:
+--   - a key whose press the game saw stays the game's until its release (the block waits, at most BLOCK_WAIT_ON seconds)
+--   - a key pressed under the block stays away from the game until its release (the block stays, at most BLOCK_WAIT_OFF)
+-- Losing focus and unloading lift the block at once. The handler still returns true for what it takes, as before.
+-- Which keys the driver acts on: the focused search box comes first; while the chat line is open, and with Ctrl or Alt held,
+-- no new press is taken (kbd.game: a press the game saw; kbd.took: a press the driver took).
 ---------------------------------------------------------------------------
 local KEY_K = 0x25
 local KEY_ACT = {
@@ -433,7 +440,10 @@ local KEY_ACT = {
     [0x0F] = 'tab_next',                                 -- Tab (Shift + Tab: tab_prev)
     [0xC9] = 'page_up', [0xD1] = 'page_down', [0xC7] = 'top', [0xCF] = 'bottom',
 }
-local kbd = {held = false, took = {}, game = {}, dir = nil, dir_key = nil, next_at = 0}
+local kbd = {held = false, took = {}, game = {}, dir = nil, dir_key = nil, next_at = 0,
+             down = {}, ndown = 0, block = false, wait_since = nil}
+local BLOCK_WAIT_ON = 0.5       -- a key the game saw, still held after this: the block starts anyway (the game sees it released)
+local BLOCK_WAIT_OFF = 2        -- a key still down after this (its release lost): the block ends anyway
 local KBD_HINT = 'Enter Open  Bksp Back  Tab Section  PgUp PgDn Page  K Done'
 kbd_hint = function() return kbd.held and KBD_HINT or nil end
 
@@ -442,11 +452,13 @@ local function chat_open()
     return info and info.chat_open == true
 end
 
+local kbd_block                 -- the block follows the hold (below)
 kbd_give = function()
     kbd.dir, kbd.dir_key = nil, nil
     if not kbd.held then return end
     kbd.held = false
     if win then win:pad_leave('keys', padc.held and pad_hint() or nil) end
+    kbd_block(os.clock())
 end
 
 local function kbd_take()
@@ -492,9 +504,36 @@ local function kbd_tick(now)
     end
 end
 
--- the game window lost or gained focus: a key released elsewhere never sent its key-up
+-- the whole keyboard kept from the game, or given back (Windower's keyboard_blockinput)
+local function kbd_set_block(on)
+    kbd.block, kbd.wait_since = on, nil
+    windower.send_command('keyboard_blockinput ' .. (on and '1' or '0'))
+end
+
+-- the block Chronicle wants: the keys held, or the search box focused, on a window that draws
+local function kbd_want_block()
+    return (kbd.held or (win and win.focus ~= nil)) and win and win.visible and nui.drawing and true or false
+end
+
+-- after every key and once a frame: the block follows what is wanted, but changes only while no key is down
+kbd_block = function(now)
+    local want = kbd_want_block()
+    if want == kbd.block then kbd.wait_since = nil return end
+    if kbd.ndown > 0 then
+        kbd.wait_since = kbd.wait_since or now
+        if now - kbd.wait_since < (want and BLOCK_WAIT_ON or BLOCK_WAIT_OFF) then return end
+    end
+    kbd_set_block(want)
+end
+
+-- the game window lost or gained focus: a key released elsewhere never sent its key-up. Losing focus also lifts the block at
+-- once: no key is down in a window without focus
 local function kbd_reset()
     kbd.took, kbd.game, kbd.dir, kbd.dir_key = {}, {}, nil, nil
+    kbd.down, kbd.ndown = {}, 0
+end
+local function kbd_unblock_now()
+    if kbd.block then kbd_set_block(false) end
 end
 
 -- textures: area emblems and the trophy, loaded once and kept (64 px: 16 KB each)
@@ -572,8 +611,7 @@ end)
 
 -- The search box first (review UI-4), then the keyboard driver. A release is swallowed when its press was: by the box, or by the
 -- driver (each clears its own record of the press, whoever swallows it)
-windower.register_event('keyboard', function(dik, down, flags, blocked)
-    local ch = keys.char(dik, down)
+local function kbd_event(dik, down, ch)
     if not down then
         local mine = kbd.took[dik]
         kbd.took[dik], kbd.game[dik] = nil, nil
@@ -585,11 +623,22 @@ windower.register_event('keyboard', function(dik, down, flags, blocked)
     if win and nui.drawing and win:key(dik, down, ch) then return true end
     if kbd_down(dik, os.clock()) then return true end
     kbd.game[dik] = true
+end
+windower.register_event('keyboard', function(dik, down, flags, blocked)
+    local ch = keys.char(dik, down)
+    if down then
+        if not kbd.down[dik] then kbd.down[dik], kbd.ndown = true, kbd.ndown + 1 end
+    elseif kbd.down[dik] then
+        kbd.down[dik], kbd.ndown = nil, kbd.ndown - 1
+    end
+    local keep = kbd_event(dik, down, ch)
+    kbd_block(os.clock())
+    if keep then return true end
 end)
 
 -- a Shift released while the game had no focus never sent its key-up (review UI-7); the controller and the keyboard go back to
 -- the game, which (with "gamepad works when inactive") would otherwise lose the pad to a window nobody is looking at
-windower.register_event('lose focus', function() keys.reset() kbd_reset() pad_give() kbd_give() end)
+windower.register_event('lose focus', function() keys.reset() kbd_reset() pad_give() kbd_give() kbd_unblock_now() end)
 windower.register_event('gain focus', function() keys.reset() kbd_reset() end)
 
 -- the restyle after a change of the game's window type (made once, not a closure every pass)
@@ -602,6 +651,7 @@ end
 windower.register_event('prerender', function()
     pad_tick(os.clock())
     kbd_tick(os.clock())
+    if kbd.block or kbd.held or (win and win.focus) then kbd_block(os.clock()) end
     if not win then
         if retry.at and os.clock() >= retry.at then
             retry.at = nil
@@ -735,6 +785,7 @@ end)
 windower.register_event('unload', function()
     if nui.N then pcall(nui.stop) end
     kbd_give()
+    kbd_unblock_now()
     pcall(progress.flush)
     pcall(save_place)
     pcall(pages.close)

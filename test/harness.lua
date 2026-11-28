@@ -134,7 +134,7 @@ function H.load(opts)
     opts = opts or {}
     local here = (opts.dir or '.'):gsub('\\', '/')
     if here:sub(-1) ~= '/' then here = here .. '/' end
-    local env = {events = {}, chat = {}, urls = {}, scheduled = {}, saves = 0}
+    local env = {events = {}, chat = {}, urls = {}, scheduled = {}, saves = 0, commands = {}, blockinput = false}
     local now = 0
     env.clock = function() return now end
     env.advance = function(dt) now = now + dt end
@@ -155,6 +155,12 @@ function H.load(opts)
             return {x_res = w, y_res = h, ui_x_res = opts.ui_w or w, ui_y_res = opts.ui_h or h}
         end,
         open_url = function(u) env.urls[#env.urls + 1] = u end,
+        -- console commands the addon sends; env.blockinput: what the last keyboard_blockinput set (Windower's own command)
+        send_command = function(c)
+            env.commands[#env.commands + 1] = c
+            local v = c:match('^keyboard_blockinput (%d)$')
+            if v then env.blockinput = v == '1' end
+        end,
         ffxi = {
             get_player = function() return {name = opts.player or 'Berrant'} end,
             -- env.chat_open: the game's chat line is open (the keyboard driver takes no press then)

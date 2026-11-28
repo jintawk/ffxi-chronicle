@@ -165,19 +165,25 @@ also works for a pad that Steam Input, DS4Windows or reWASD maps to keys.
 | Page Up / Page Down | A page up or down |
 | Home / End | The top or the bottom of the page |
 
-While Chronicle has the keys, the game does not get these keys. Every other key still goes to the game. K takes
-nothing while the chat line is open, so you can still type a K in chat. A key with Ctrl or Alt held also goes to
-the game. While the search box has focus, it gets every key first, as it does with the mouse.
+While Chronicle has the keys, the game gets no key at all, so you cannot chat or use a macro until you give
+the keys back. Windower lets an addon keep the whole keyboard from the game, but not one key. The search box works
+the same way: while it has focus, the game gets none of what you type, so a letter no longer opens a game menu.
+
+K takes nothing while the chat line is open, so you can still type a K in chat. K with Ctrl or Alt held does
+nothing in Chronicle.
 
 The keys follow the same rules as the controller. A key you were already holding when you pressed K still belongs
 to the game until you let go of it. A key you pressed while Chronicle had the keys stays away from the game until
-you let go of it, even if you give the keys back first.
+you let go of it, even if you give the keys back first. If Windower loses a key's release, Chronicle gives the
+keyboard back after 2 seconds anyway. A key held for longer than half a second when you press K reaches the game
+as released.
 
 Chronicle holds the controller and the keyboard separately, and they move the same cursor. L3 + R3 does not take
 the arrow keys, and K does not take the controller. The line at the bottom of the window names the
 keys of whichever one you used last.
 
-Chronicle gives the keys back when you hide the window, log out, unload it, or switch to another window.
+Chronicle gives the keys back when you hide the window, log out, unload it, or switch to another window. If the
+keyboard ever seems stuck, switch to another window and back.
 `//cr nav` does what K does, so you can bind it to another key with Windower's `bind`. With `//cr nav off`, K no
 longer takes the keys, and the Settings screen has the same switch.
 
