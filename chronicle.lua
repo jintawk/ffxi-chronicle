@@ -268,25 +268,28 @@ local function pad_hint()
     return ok .. ' Open  ' .. back .. ' Back  LB RB Section  LT RT Page  L3+R3 Done'
 end
 
--- the game's own Confirm and Cancel, and whether it also uses L3 or R3
+-- the game's own Confirm and Cancel, and whether it also uses L3 or R3. A registry read that needs no hook, so it runs
+-- once per load, before the hook is tried: a refused hook still shows the player's own buttons and says why
 local function pad_read_config()
-    local cfg = nui.N and nui.N.pad_config and nui.N.pad_config() or nil
-    padc.cfg = cfg
-    padc.dec.confirm, padc.dec.cancel, padc.xinput = pad.from_config(cfg)
-    padc.conflicts = pad.chord_conflicts(cfg)
+    if padc.cfg_read or not (nui.N and nui.N.pad_config) then return end
+    padc.cfg_read = true
+    local cfg = nui.N.pad_config()
+    padc.cfg = type(cfg) == 'table' and cfg or nil
+    padc.dec.confirm, padc.dec.cancel, padc.xinput = pad.from_config(padc.cfg)
+    padc.conflicts = pad.chord_conflicts(padc.cfg)
 end
 
 -- join the hook; while xinput1_3.dll is not loaded it is tried again every few seconds, quietly
 local function pad_join(now)
     if padc.joined then return true end
     if not (nui.N and nui.N.pad_start) then padc.why = '_chronicle.dll has no controller support' return false end
+    pad_read_config()
     local ok, msg, retry_ms = nui.N.pad_start()
     if ok then
         padc.joined, padc.why = true, nil
         -- nui 1.4.0: the hook keeps L3 + R3 from the game itself, so the chord never sits the player down or turns the
         -- camera (a lone L3 or R3 reaches the game up to 150 ms late; a tap of one still does)
         if nui.N.pad_chord then nui.N.pad_chord(pad.CHORD) end
-        pad_read_config()
         return true
     end
     padc.why = msg
@@ -387,6 +390,7 @@ local function pad_status_lines()
     if settings.pad == false then say('controller off (//' .. ident.short .. ' pad on)') return end
     local st = nui.N and nui.N.pad_status and nui.N.pad_status()
     if not st then say('controller: _chronicle.dll has no controller support', 167) return end
+    pad_read_config()                      -- in case nothing has tried the hook yet
     say(('controller %s | %s | %s'):format(padc.held and 'held' or (padc.joined and 'ready (L3+R3)' or 'not joined'),
         tostring(st.describe), padc.why and ('why: ' .. padc.why) or ('reads ' .. tostring(st.reads))))
     local ok, back = padc.dec:labels()
@@ -783,7 +787,10 @@ windower.register_event('addon command', function(...)
             pad_give()
         elseif not pad_join(os.clock()) then
             local why = tostring(padc.why)
-            if why:find('not loaded', 1, true) then
+            if padc.xinput == false then         -- the game's own config says so: no guessing between the two causes
+                why = why .. '. Enable XInput is off in the FFXI Config (Gamepad), so the game reads the pad with ' ..
+                    'DirectInput, which Chronicle cannot read yet. Turn it on to use the controller here'
+            elseif why:find('not loaded', 1, true) then
                 why = why .. '. Turn on Enable XInput in the FFXI Config (Gamepad), or press a pad button first'
             end
             say('controller: ' .. why, 167)

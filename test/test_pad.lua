@@ -305,6 +305,46 @@ do
     check('not loaded: //cr pad says what to do', said)
 end
 
+-- the hook refused for good (an entry it will not patch): the game's pad config is read anyway, so status shows the
+-- player's own buttons (test report 2026-11-25: 'game pad config: not found' while the hook was refused)
+local function chat_line(env, needle)
+    local found
+    for _, l in ipairs(env.chat) do if l:find(needle, 1, true) then found = l end end
+    return found
+end
+do
+    local sin = {}
+    for i = 0, 26 do sin[#sin + 1] = (i == 7 and 0) or (i == 5 and 3) or 16 end
+    local env = shown({fake = {pad_fail = 'XInputGetState is not hot-patchable (CC CC CC CC CC 55 8B): not patched',
+                       pad_config = {key = 'test', padmode = '1,0,1,1,0,1', padsin = table.concat(sin, ',')}}})
+    for _ = 1, 30 do env.frame() end
+    check('refused: tried once, never again', env.N.pad_starts == 1, env.N.pad_starts)
+    env.cmd('pad', 'status')
+    local line = chat_line(env, 'game pad config:')
+    check('refused: the config is read anyway', line and line:find('game pad config: test', 1, true) ~= nil, line)
+    check("refused: status shows the game's own buttons", line and line:find('Confirm B, Cancel A', 1, true) ~= nil, line)
+    check('refused: status says XInput is on', line and line:find('XInput on', 1, true) ~= nil, line)
+end
+
+-- Enable XInput is off in the game's config: //cr pad says so, instead of guessing between the two causes
+do
+    local env = shown({fake = {pad_fail = 'xinput1_3.dll is not loaded (the game reads the pad with DirectInput, or not yet)',
+                       pad_retry_ms = 5000, pad_config = {key = 'test', padmode = '1,0,1,1,0,0', padsin = ''}}})
+    env.frame()
+    env.cmd('pad')
+    check('xinput off: //cr pad says the config has it off', chat_line(env, 'Enable XInput is off') ~= nil)
+    check('xinput off: no guess about a pad button', chat_line(env, 'press a pad button') == nil)
+end
+
+-- with the controller off, status says so and shows no config line
+do
+    local env = shown({settings = {visible_on_load = false, pad = false}, fake = {pad_config = {key = 'test'}}})
+    env.frame()
+    env.cmd('pad', 'status')
+    check('off: status says off', chat_line(env, 'controller off') ~= nil)
+    check('off: no config line', chat_line(env, 'game pad config:') == nil)
+end
+
 -- the game's own Confirm on B: B opens, A goes back
 do
     local sin = {}
