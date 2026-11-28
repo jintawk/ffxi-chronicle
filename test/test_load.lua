@@ -32,7 +32,7 @@ for _, f in ipairs({'version', 'start', 'stop', 'status', 'screen', 'layer', 'la
     check('function ' .. f, type(N[f]) == 'function')
 end
 -- the drawing layer's own version, which moves when the drawing does, not with the addon's
-check('version', N.version() == '2.1.0', N.version())
+check('version', N.version() == '2.1.1', N.version())
 
 -- fails closed without the game
 local good, msg = N.start()

@@ -283,6 +283,9 @@ local function pad_join(now)
     local ok, msg, retry_ms = nui.N.pad_start()
     if ok then
         padc.joined, padc.why = true, nil
+        -- nui 1.4.0: the hook keeps L3 + R3 from the game itself, so the chord never sits the player down or turns the
+        -- camera (a lone L3 or R3 reaches the game up to 150 ms late; a tap of one still does)
+        if nui.N.pad_chord then nui.N.pad_chord(pad.CHORD) end
         pad_read_config()
         return true
     end
@@ -311,7 +314,9 @@ local function pad_take(buttons)
     if not padc.said then
         padc.said = true
         say('controller: L3+R3 gives it back to the game')
-        if #padc.conflicts > 0 then say('your FFXI pad config also uses L3 or R3: pressing both does that too', 167) end
+        if #padc.conflicts > 0 and not nui.N.pad_chord then
+            say('your FFXI pad config also uses L3 or R3: pressing both does that too (a newer _chronicle.dll stops it)', 167)
+        end
     end
 end
 

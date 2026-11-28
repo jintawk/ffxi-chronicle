@@ -122,6 +122,7 @@ do
     local N = env.N
     env.frame()
     check('lifecycle: joined on the first frame', N.pad_joined and N.pad_starts == 1)
+    check('lifecycle: the hook keeps L3 + R3 from the game', N.chord == B.l3 + B.r3, N.chord)
     env.frame()
     check('lifecycle: not held before the chord', not N.pad_holding and not win.pad_mode)
     tap(env, B.a)

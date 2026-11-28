@@ -114,6 +114,10 @@ Press **L3 and R3 together** (both sticks in) to give the controller to Chronicl
 it back. While Chronicle has it, the game does not see what you press, so the D-pad moves Chronicle's cursor
 and not the game's.
 
+The game never sees the L3 + R3 chord either, so it does not also sit you down or change the camera. To make
+that work, an L3 or R3 pressed on its own reaches the game up to 150 ms late, while Chronicle waits to see
+whether the other one follows. A quick tap of one still reaches the game.
+
 | Button | What it does |
 |---|---|
 | D-pad or left stick | Move the cursor: cards, rows, buttons, links, path tabs |
