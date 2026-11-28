@@ -48,5 +48,57 @@ function keys.reset() for k in pairs(held) do held[k] = false end end
 -- -> Shift held, Ctrl or Alt held (as the last keyboard events said)
 function keys.shift() return held[0x2A] or held[0x36] end
 function keys.ctrl_alt() return held[0x1D] or held[0x9D] or held[0x38] or held[0xB8] end
+function keys.ctrl() return held[0x1D] or held[0x9D] end
+function keys.alt() return held[0x38] or held[0xB8] end
+function keys.modifier(dik) return held[dik] ~= nil end
+
+-- Key names, for the keyboard driver's own key (settings.nav_key): the characters above, F1 to F12 and a few named keys.
+-- A name is lower case, with optional modifiers before it: 'k', 'ctrl+n', 'alt+shift+f10' (Windower's ^n, !n and ~n too).
+local NAMED = {
+    f1 = 0x3B, f2 = 0x3C, f3 = 0x3D, f4 = 0x3E, f5 = 0x3F, f6 = 0x40, f7 = 0x41, f8 = 0x42, f9 = 0x43, f10 = 0x44,
+    f11 = 0x57, f12 = 0x58, space = 0x39, insert = 0xD2, delete = 0xD3, pause = 0xC5, scrolllock = 0x46,
+    up = 0xC8, down = 0xD0, left = 0xCB, right = 0xCD, enter = 0x1C, backspace = 0x0E, tab = 0x0F,
+    pageup = 0xC9, pagedown = 0xD1, home = 0xC7, ['end'] = 0xCF,
+}
+local DIK_OF, NAME_OF = {}, {}
+for dik, c in pairs(plain) do if c ~= ' ' then DIK_OF[c], NAME_OF[dik] = dik, c end end
+for n, dik in pairs(NAMED) do DIK_OF[n], NAME_OF[dik] = dik, n end
+local PREFIX = {['^'] = 'ctrl', ['!'] = 'alt', ['~'] = 'shift'}
+
+-- name -> {dik, ctrl, alt, shift, name (normalized), label (for the hint line)}, or nil and why
+function keys.parse(name)
+    local s = tostring(name or ''):lower():gsub('%s+', '')
+    local mods = {}
+    while true do
+        local p = s:sub(1, 1)
+        if PREFIX[p] and #s > 1 then mods[PREFIX[p]] = true s = s:sub(2)
+        else
+            local m, rest = s:match('^(%a+)%+(.+)$')
+            if m == 'ctrl' or m == 'alt' or m == 'shift' then mods[m] = true s = rest else break end
+        end
+    end
+    local dik = DIK_OF[s]
+    if not dik then return nil, 'not a key name: ' .. tostring(name) end
+    local parts, label = {}, {}
+    for _, m in ipairs({'ctrl', 'alt', 'shift'}) do
+        if mods[m] then parts[#parts + 1] = m label[#label + 1] = m:sub(1, 1):upper() .. m:sub(2) end
+    end
+    parts[#parts + 1] = s
+    label[#label + 1] = #s == 1 and s:upper() or (s:sub(1, 1):upper() .. s:sub(2))
+    return {dik = dik, ctrl = mods.ctrl == true, alt = mods.alt == true, shift = mods.shift == true,
+            name = table.concat(parts, '+'), label = table.concat(label, '+')}
+end
+
+-- the key just pressed, with the modifiers held, as a name for keys.parse (nil: a key with no name)
+function keys.name_now(dik)
+    local n = NAME_OF[dik]
+    if not n then return nil end
+    local parts = {}
+    if keys.ctrl() then parts[#parts + 1] = 'ctrl' end
+    if keys.alt() then parts[#parts + 1] = 'alt' end
+    if keys.shift() then parts[#parts + 1] = 'shift' end
+    parts[#parts + 1] = n
+    return table.concat(parts, '+')
+end
 
 return keys

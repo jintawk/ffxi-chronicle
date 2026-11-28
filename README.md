@@ -184,9 +184,17 @@ keys of whichever one you used last.
 
 Chronicle gives the keys back when you hide the window, log out, unload it, or switch to another window. If the
 keyboard ever seems stuck, switch to another window and back.
-`//cr nav` does what K does, so you can bind it to another key with Windower's `bind`. While Chronicle has the keys,
-Windower runs no bind at all, so that key cannot give the keys back. Use K, or Escape or Backspace on a section's
-home. With `//cr nav off`, K no longer takes the keys, and the Settings screen has the same switch.
+K is the default nav key. To use another key, click "Keyboard key" on the Settings screen and press the key you
+want, with Ctrl, Alt or Shift if you like. Escape keeps the old key.
+
+`//cr nav key <name>` does the same, for example
+`//cr nav key ctrl+n` or `//cr nav key f10` (Windower's `^n` works too). An arrow key, Enter or another key that
+moves the cursor needs Ctrl, Alt or Shift with it. The hint line and the rest of this section then mean your key
+where they say K.
+
+`//cr nav` also does what K does. While Chronicle has the keys, Windower runs no bind, so a Windower `bind` for
+`//cr nav` cannot give the keys back. Choose the key in Chronicle instead. With `//cr nav off`, K no longer takes the
+keys, and the Settings screen has the same switch.
 
 ## Commands
 
@@ -205,7 +213,7 @@ home. With `//cr nav off`, K no longer takes the keys, and the Settings screen h
 | `//cr wintype auto \| 1-8` | Follow the game's window style, or pin one |
 | `//cr uncompletable` | Show quests that can no longer be done |
 | `//cr pad [on \| off \| status]` | Take or give back the controller (as L3 + R3), turn it on or off, or say why it is not working |
-| `//cr nav [on \| off]` | Take or give back the keyboard's arrow keys (as K), or turn K on or off |
+| `//cr nav [on \| off \| key <name>]` | Take or give back the keyboard's arrow keys (as K), turn K on or off, or choose another key |
 | `//cr q [area]` / `m [area]` | Summaries in the chat log |
 | `//cr status` | Drawing, memory and hook details |
 | `//cr progress` / `unknown` / `debug` / `help` | Diagnostics and help |

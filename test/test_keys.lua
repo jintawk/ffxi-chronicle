@@ -243,7 +243,7 @@ do
     local settings = require('ui/screens/settings')
     local row
     for _, r in ipairs(settings.rows(app2)) do if r.key == 'nav' then row = r end end
-    check('KEYS-E: a Settings row', row and row.label == 'Keyboard (K)' and row.value == 'On', row and row.value)
+    check('KEYS-E: a Settings row', row and row.label == 'Keyboard' and row.value == 'On', row and row.value)
 end
 
 ---------------------------------------------------------------------------------------------------------------------------
@@ -369,6 +369,82 @@ do
     tap(env, K)
     for _ = 1, 5 do env.frame() end
     check('BLOCK-11: a window that does not draw blocks nothing', blocks(env) == 0 and not env.blockinput)
+end
+
+---------------------------------------------------------------------------------------------------------------------------
+-- the nav key is the player's choice: the command, or the Settings row that takes the next key pressed
+local N_KEY, F10, F9 = 0x31, 0x44, 0x43
+local function chord(env, mod, dik)
+    key(env, mod, true)
+    local kept = tap(env, dik)
+    key(env, mod, false)
+    return kept
+end
+do
+    local env, win, app = shown()
+    local N = env.N
+    env.cmd('nav', 'key')
+    check('KEY-1: //cr nav key names the key', chat_has(env, 'K takes the keys'))
+    env.cmd('nav', 'key', 'ctrl+n')
+    check('KEY-1: //cr nav key ctrl+n', app.settings.nav_key == 'ctrl+n' and chat_has(env, 'Ctrl+N takes the keys'),
+        app.settings.nav_key)
+    check('KEY-1: K is the game\'s now', not tap(env, K) and not win.pad_mode)
+    check('KEY-1: N alone does nothing', not tap(env, N_KEY) and not win.pad_mode)
+    check('KEY-1: Ctrl + N takes the keys', chord(env, LCTRL, N_KEY) and win.pad_mode)
+    check('KEY-1: the hint line names it', N.layers[3].text:find('Ctrl+N Done', 1, true) ~= nil)
+    local c = win.cursor
+    check('KEY-1: Ctrl + an arrow is not the cursor\'s', not chord(env, LCTRL, DOWN) and win.cursor == c)
+    check('KEY-1: blocked', env.blockinput)
+    check('KEY-1: Ctrl + N gives them back under the block (a Windower bind cannot)', chord(env, LCTRL, N_KEY)
+        and not win.pad_mode and not env.blockinput)
+    env.cmd('nav', 'key', '^', 'f10')
+    check('KEY-2: Windower\'s notation, spaces and all', app.settings.nav_key == 'ctrl+f10', app.settings.nav_key)
+    env.cmd('nav', 'key', 'banana')
+    check('KEY-2: a name that is no key is refused', app.settings.nav_key == 'ctrl+f10' and chat_has(env, 'not a key name'))
+    env.cmd('nav', 'key', 'up')
+    check('KEY-2: a key that moves the cursor needs a modifier', app.settings.nav_key == 'ctrl+f10'
+        and chat_has(env, 'moves the cursor'), app.settings.nav_key)
+    env.cmd('nav', 'key', 'k')
+    key(env, LSHIFT, true)
+    check('KEY-2: Shift + K is still K', tap(env, K) and win.pad_mode)
+    key(env, LSHIFT, false)
+    tap(env, K)
+    -- the Settings row: the next key pressed, with its modifiers
+    app:go('settings', {}, 0)
+    local settings = require('ui/screens/settings')
+    local function row()
+        for _, r in ipairs(settings.rows(app)) do if r.key == 'nav_key' then return r end end
+    end
+    check('KEY-3: a Settings row names the key', row() and row().label == 'Keyboard key' and row().value == 'K',
+        row() and row().value)
+    app.prefs.change('nav_key')
+    env.frame()
+    check('KEY-3: clicked, it waits for a key', row().value == 'Press a key')
+    check('KEY-3: the keyboard is blocked while it waits', env.blockinput)
+    check('KEY-3: F10 is taken', tap(env, F10))
+    check('KEY-3: and is the key now', app.settings.nav_key == 'f10' and row().value == 'F10', app.settings.nav_key)
+    check('KEY-3: unblocked again', not env.blockinput)
+    check('KEY-3: F10 takes the keys', tap(env, F10) and win.pad_mode)
+    tap(env, F10)
+    app.prefs.change('nav_key')
+    key(env, LCTRL, true)
+    tap(env, N_KEY)
+    key(env, LCTRL, false)
+    check('KEY-3: with a modifier', app.settings.nav_key == 'ctrl+n', app.settings.nav_key)
+    app.prefs.change('nav_key')
+    local lines = #env.chat
+    check('KEY-3: Escape keeps the old key', tap(env, ESC) and app.settings.nav_key == 'ctrl+n' and row().value == 'Ctrl+N')
+    check('KEY-3: and says nothing (Escape cancels, it is not refused)', #env.chat == lines, env.chat[#env.chat])
+    check('KEY-3: and the screen stays', app.view.name == 'settings')
+    app.prefs.change('nav_key')
+    tap(env, UP)
+    check('KEY-3: a key that moves the cursor is refused there too', app.settings.nav_key == 'ctrl+n')
+    -- another character's settings: read at the next key
+    app.settings.nav_key = 'f9'
+    check('KEY-4: a changed setting is read at the next key', tap(env, F9) and win.pad_mode)
+    tap(env, F9)
+    app.settings.nav_key = 'nonsense'
+    check('KEY-4: a setting that is no key falls back to K', tap(env, K) and win.pad_mode)
 end
 
 restore()

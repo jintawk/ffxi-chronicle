@@ -97,7 +97,8 @@ local defaults = {
     show_uncompletable = false,
     share_textures = true,  -- false: keep this addon's own textures (start 'noshare'), not the shared cache
     pad = true,             -- the controller: L3 + R3 takes it (nui's pad hook, XInput only); false never hooks it
-    nav = true,             -- the keyboard: K takes the arrows, Enter, Backspace, Escape, Tab, PgUp/PgDn, Home/End; false never takes a key
+    nav = true,             -- the keyboard: the nav key takes the arrows, Enter, Backspace, Escape, Tab, PgUp/PgDn, Home/End; false never takes a key
+    nav_key = 'k',          -- that key: a name for ui/keys.lua's keys.parse ('k', 'ctrl+n', 'f10')
 }
 -- A settings.xml the stock config library cannot parse (half written by another client) makes config.load throw, and the addon
 -- would not load (review LIFE-6): the defaults are used instead, the file is left alone and nothing is saved until a load works
@@ -432,7 +433,7 @@ end
 -- Which keys the driver acts on: the focused search box comes first; while the chat line is open, and with Ctrl or Alt held,
 -- no new press is taken (kbd.game: a press the game saw; kbd.took: a press the driver took).
 ---------------------------------------------------------------------------
-local KEY_K = 0x25
+local KEY_ESC = 0x01
 local KEY_ACT = {
     [0xC8] = 'up', [0xD0] = 'down', [0xCB] = 'left', [0xCD] = 'right',
     [0x1C] = 'confirm', [0x9C] = 'confirm',              -- Enter, the number pad's Enter
@@ -444,8 +445,18 @@ local kbd = {held = false, took = {}, game = {}, dir = nil, dir_key = nil, next_
              down = {}, ndown = 0, block = false, wait_since = nil}
 local BLOCK_WAIT_ON = 0.5       -- a key the game saw, still held after this: the block starts anyway (the game sees it released)
 local BLOCK_WAIT_OFF = 2        -- a key still down after this (its release lost): the block ends anyway
-local KBD_HINT = 'Enter Open  Bksp Back  Tab Section  PgUp PgDn Page  K Done'
-kbd_hint = function() return kbd.held and KBD_HINT or nil end
+local KBD_HINT
+
+-- The nav key (settings.nav_key), parsed again whenever the setting changes (a login reads the next character's). A name that
+-- does not parse falls back to K.
+local function kbd_key()
+    local want = settings.nav_key or 'k'
+    if kbd.key and kbd.key_src == want then return kbd.key end
+    kbd.key, kbd.key_src = keys.parse(want) or keys.parse('k'), want
+    KBD_HINT = 'Enter Open  Bksp Back  Tab Section  PgUp PgDn Page  ' .. kbd.key.label .. ' Done'
+    return kbd.key
+end
+kbd_hint = function() return kbd.held and (kbd_key() and KBD_HINT) or nil end
 
 local function chat_open()
     local info = windower.ffxi.get_info()
@@ -466,7 +477,32 @@ local function kbd_take()
     if not (win and win.visible) then show() end
     if not (win and win.visible) then return end
     kbd.held = true
+    kbd_key()
     win:pad_enter(KBD_HINT, 'keys')
+end
+
+-- A new nav key (the command, or the Settings row's capture). -> the key, or nil and why. A key that moves the cursor needs a
+-- modifier, or it could never move it.
+local function kbd_set_key(name)
+    local k, why = keys.parse(name)
+    if not k then return nil, why end
+    if KEY_ACT[k.dik] and not (k.ctrl or k.alt or k.shift) then return nil, k.label .. ' moves the cursor: add Ctrl, Alt or Shift' end
+    settings.nav_key = k.name
+    save()
+    kbd_key()
+    if kbd.held and win then win:pad_hint_for(KBD_HINT) win:flush() end
+    return k
+end
+
+-- the Settings row "Keyboard key": the next key pressed (with its modifiers) is the nav key; Escape keeps the old one
+local function kbd_capture(dik)
+    kbd.capture = false
+    if dik ~= KEY_ESC then
+        local name = keys.name_now(dik)
+        local k, why = kbd_set_key(name or '')
+        if k then say('keyboard: ' .. k.label .. ' takes the keys') else say('keyboard: ' .. (why or 'that key has no name'), 167) end
+    end
+    if win then win:invalidate('all') win:flush() end
 end
 
 local function kbd_act(a, now)
@@ -479,13 +515,20 @@ end
 local function kbd_down(dik, now)
     if kbd.took[dik] then return true end                -- held (Windower repeating it): the arrow repeats on our clock
     if kbd.game[dik] then return false end               -- the game saw this press: its repeats are the game's too
-    if settings.nav == false or keys.ctrl_alt() or chat_open() then return false end
-    if dik == KEY_K then
+    if kbd.capture and not keys.modifier(dik) then
+        kbd.took[dik] = true
+        kbd_capture(dik)
+        return true
+    end
+    if settings.nav == false or chat_open() then return false end
+    local nk = kbd_key()
+    if dik == nk.dik and keys.ctrl() == nk.ctrl and keys.alt() == nk.alt and (keys.shift() or not nk.shift) then
         if kbd.held then kbd_give() else kbd_take() end
-        if not kbd.held and not (win and win.visible) then return false end   -- no window to take the keys to: the game's K
+        if not kbd.held and not (win and win.visible) then return false end   -- no window to take the keys to: the game's key
         kbd.took[dik] = true
         return true
     end
+    if keys.ctrl_alt() then return false end
     local a = KEY_ACT[dik]
     if not (a and kbd.held and win and win.visible and nui.drawing) then return false end
     kbd.took[dik] = true
@@ -512,7 +555,7 @@ end
 
 -- the block Chronicle wants: the keys held, or the search box focused, on a window that draws
 local function kbd_want_block()
-    return (kbd.held or (win and win.focus ~= nil)) and win and win.visible and nui.drawing and true or false
+    return (kbd.held or kbd.capture or (win and win.focus ~= nil)) and win and win.visible and nui.drawing and true or false
 end
 
 -- after every key and once a frame: the block follows what is wanted, but changes only while no key is down
@@ -559,6 +602,8 @@ app.prefs = {
         if not settings.wintype or settings.wintype == 0 then return 'Auto (' .. nui.wt.type .. ')' end
         return tostring(settings.wintype)
     end,
+    -- the Settings row "Keyboard key": the key, or the prompt while the next key press is awaited
+    nav_key = function() return kbd.capture and 'Press a key' or kbd_key().label end,
     scale_name = function()
         local m = settings.scale_mode or 'one'
         if m == 'sim' then return ('Sim %dx%d'):format(settings.sim_w, settings.sim_h) end
@@ -586,7 +631,9 @@ app.prefs = {
             if settings.pad == false then pad_off() end
         elseif key == 'nav' then
             settings.nav = settings.nav == false
-            if settings.nav == false then kbd_give() end
+            if settings.nav == false then kbd_give() kbd.capture = false end
+        elseif key == 'nav_key' then
+            kbd.capture = not kbd.capture       -- the next key pressed is the nav key (kbd_capture); a second click cancels
         elseif key == 'reset' then
             win.x, win.y, win.w, win.h = 200, 150, 620, 760
             place_window()
@@ -650,7 +697,7 @@ end
 
 windower.register_event('prerender', function()
     -- the keyboard block first: an error further on must never keep the game's keyboard blocked
-    if kbd.block or kbd.held or (win and win.focus) then kbd_block(os.clock()) end
+    if kbd.block or kbd.held or kbd.capture or (win and win.focus) then kbd_block(os.clock()) end
     pad_tick(os.clock())
     kbd_tick(os.clock())
     if not win then
@@ -851,7 +898,7 @@ local HELP = {
     '  //%s wintype auto | 1-8',
     '  //%s uncompletable   toggle uncompletable quests',
     '  //%s pad [on | off | status]   take the controller (L3+R3 does too)',
-    '  //%s nav [on | off]   take the keyboard\'s arrows (K does too)',
+    '  //%s nav [on | off | key <name>]   take the keyboard\'s arrows (the nav key, K, does too)',
     '  //%s q [area] | m [area]   summaries in chat',
     '  //%s progress [log | debug]   quest step progress',
     '  //%s unknown | debug | status | help',
@@ -970,11 +1017,16 @@ windower.register_event('addon command', function(...)
             pad_take(b or 0)
         end
     elseif cmd == 'nav' or cmd == 'keys' then
-        if a == 'on' or a == 'off' then
+        if a == 'key' then
+            if not b then say('keyboard: ' .. kbd_key().label .. ' takes the keys (//' .. ident.short .. ' nav key <name>)') return end
+            local k, why = kbd_set_key(table.concat(args, ' ', 3))
+            if k then say('keyboard: ' .. k.label .. ' takes the keys') else say('keyboard: ' .. why, 167) end
+            if win and app.view.name == 'settings' then win:invalidate('all') win:flush() end
+        elseif a == 'on' or a == 'off' then
             settings.nav = a == 'on'
             save()
-            if a == 'off' then kbd_give() end
-            say('keyboard ' .. a .. (a == 'on' and ' (K takes the arrows)' or ''))
+            if a == 'off' then kbd_give() kbd.capture = false end
+            say('keyboard ' .. a .. (a == 'on' and (' (' .. kbd_key().label .. ' takes the arrows)') or ''))
         elseif settings.nav == false then
             say('keyboard off (//' .. ident.short .. ' nav on)', 167)
         elseif kbd.held then
