@@ -195,7 +195,7 @@ While Chronicle has the keys, it keeps only those keys and K from the game. You 
 press an F key or run a Windower bind. The search box is different: while it has focus, the game gets none of what
 you type. So a letter does not open a game menu, and Space or / does not open the chat line.
 
-Chronicle keeps single keys from the game with its own DLL, from `_chronicle.dll` 2.1.5. The DLL may not find the
+Chronicle keeps single keys from the game with its own DLL, from `_chronicle.dll` 2.1.0. The DLL may not find the
 game's keyboard reads, for example after a game update. Then Chronicle keeps the whole keyboard from the game while it
 has the keys, as it did before. `//cr nav status` says which way it works, and why.
 

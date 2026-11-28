@@ -53,7 +53,7 @@ function H.fake_native(opts)
         N.started = true
         return true, 'hooked'
     end
-    function N.stop() N.started = false N.layers = {} if N.key_stop then N.key_stop() end return 'stopped' end   -- 1.6.0: stop() leaves the key hook
+    function N.stop() N.started = false N.layers = {} if N.key_stop then N.key_stop() end return 'stopped' end   -- stop() leaves the key hook
     function N.status()
         N.statuses = N.statuses + 1
         local n = 0
@@ -105,7 +105,7 @@ function H.fake_native(opts)
     function N.wtwatch() return true end
     -- the controller (nui 1.3.0): N.padstate is what the game "read" (set its fields and bump seq), N.pad_holding the capture.
     -- opts.pad_fail: pad_start fails with that message (opts.pad_retry_ms: and asks to be retried); opts.pad_config: pad_config()
-    -- opts.pad_route, opts.pad_shim: pad_status().route and .shim (nui 1.5.0; default 'export', no shim field)
+    -- opts.pad_route, opts.pad_shim: pad_status().route and .shim (default 'export', no shim field)
     N.padstate = {seq = 1, buttons = 0, lt = 0, rt = 0, lx = 0, ly = 0, rx = 0, ry = 0}
     N.pad_holding, N.pad_joined, N.captures, N.pad_starts = false, false, 0, 0
     function N.pad_start()
@@ -127,7 +127,7 @@ function H.fake_native(opts)
                 shim = opts.pad_shim}
     end
     function N.pad_stop() N.pad_joined, N.pad_holding = false, false return 'stopped' end
-    -- the key hook (nui 1.6.0). opts.key: key_start joins (otherwise it refuses, as when nui finds no keyboard reads, so the
+    -- the key hook (nui 1.3.0). opts.key: key_start joins (otherwise it refuses, as when nui finds no keyboard reads, so the
     -- tests that do not ask for it see the keyboard_blockinput fallback). opts.key_retry_ms: it asks to be retried first.
     -- opts.no_key: the functions are missing (an older DLL). N.key_hidden: the codes of the last key_hide, as a set;
     -- N.key_hides: how many calls; N.key_list: the last call's codes in order.

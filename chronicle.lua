@@ -298,7 +298,7 @@ local function pad_read_config()
     padc.conflicts = pad.chord_conflicts(padc.cfg, pad_chord().mask)
 end
 
--- join the hook. On the client's own XInput wrapper (nui 1.5.0) that works at once. On the fallback, while xinput1_3.dll is
+-- join the hook. On the client's own XInput wrapper that works at once. On the fallback, while xinput1_3.dll is
 -- not loaded, it is tried again every few seconds, quietly
 local function pad_join(now)
     if padc.joined then return true end
@@ -307,7 +307,7 @@ local function pad_join(now)
     local ok, msg, retry_ms = nui.N.pad_start()
     if ok then
         padc.joined, padc.why = true, nil
-        -- nui 1.4.0: the hook keeps the chord from the game itself, so L3 + R3 never sits the player down or turns the
+        -- the hook keeps the chord from the game itself, so L3 + R3 never sits the player down or turns the
         -- camera (a lone chord button reaches the game up to 150 ms late; a tap of one still does)
         if nui.N.pad_chord then nui.N.pad_chord(pad_chord().mask) end
         return true
@@ -429,7 +429,7 @@ end
 local XINPUT_OFF = 'Enable XInput is off in the FFXI Config (Gamepad), so the game reads the pad with DirectInput, ' ..
     'which Chronicle cannot read yet. Turn it on to use the controller here'
 
--- nui 1.5.0, on the client's XInput wrapper: the client has not loaded its XInput shim, so no pad state can arrive
+-- on the client's XInput wrapper: the client has not loaded its XInput shim, so no pad state can arrive
 local function pad_no_shim()
     local st = nui.N and nui.N.pad_status and nui.N.pad_status()
     return type(st) == 'table' and st.route == 'wrapper' and st.shim == false
@@ -523,7 +523,7 @@ end
 --
 -- Keeping keys from the game. In game (2026-11-27), returning true from the keyboard event kept no key from the game: the
 -- arrows still turned the camera, and letters typed in the search box opened the game's menus. Two things do keep keys:
---   - nui's key hook (1.6.0, kbd_hide_sync): it hides only the keys Chronicle names, from the game's actions, after Windower
+--   - nui's key hook (kbd_hide_sync): it hides only the keys Chronicle names, from the game's actions, after Windower
 --     has seen them. So chat, macros and Windower binds still work in nav mode. It hides the nav key, the nav keys while they
 --     are held, and Escape while the Settings row waits for two buttons. The hook's own rules keep a press whole: a press the
 --     game saw stays the game's, and a hidden press stays hidden, until its release.
@@ -677,7 +677,7 @@ local function kbd_want_block()
     return want and win and win.visible and nui.drawing and true or false
 end
 
--- nui 1.6.0: join the key hook. True while it is joined. An older DLL, or a hook nui refuses, leaves the block to do the work.
+-- join nui's key hook. True while it is joined. An older DLL, or a hook nui refuses, leaves the block to do the work.
 local function kbd_hook_join(now)
     if kbd.hook ~= nil then return kbd.hook end
     if now < kbd.hook_retry then return false end
@@ -1237,7 +1237,7 @@ windower.register_event('addon command', function(...)
             end
             say('controller: ' .. why, 167)
         elseif pad_no_shim() then
-            -- nui 1.5.0 joins the client's XInput wrapper before the client loads its XInput shim, and in DirectInput mode
+            -- nui joins the client's XInput wrapper before the client loads its XInput shim, and in DirectInput mode
             say('controller: ' .. (padc.xinput == false and XINPUT_OFF
                 or 'the game has not loaded its XInput shim (xinputdll.dll) yet. Try again in a moment'), 167)
         else

@@ -336,7 +336,7 @@ do
     check('xinput off: no guess about a pad button', chat_line(env, 'press a pad button') == nil)
 end
 
--- nui 1.5.0 joins the client's XInput wrapper at once, also with Enable XInput off: //cr pad still says why it cannot take
+-- nui joins the client's XInput wrapper at once, also with Enable XInput off: //cr pad still says why it cannot take
 -- the pad while the client has not loaded its XInput shim, and takes it once the shim is there
 do
     local env = shown({fake = {pad_route = 'wrapper', pad_shim = false,

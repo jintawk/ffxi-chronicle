@@ -448,7 +448,7 @@ do
 end
 
 ---------------------------------------------------------------------------------------------------------------------------
--- nui 1.6.0: the key hook hides only Chronicle's keys, so nav mode sends no keyboard_blockinput. The search box and the
+-- nui's key hook hides only Chronicle's keys, so nav mode sends no keyboard_blockinput. The search box and the
 -- "Keyboard key" row still block the whole keyboard (typed text reaches the chat line as window messages). Each rule has
 -- its own named check (HOOK-0 ...).
 local NAV_KEYS = {UP, DOWN, LEFT, RIGHT, ENTER, 0x9C, BKSP, ESC, TAB, PGUP, PGDN, HOME, END}
