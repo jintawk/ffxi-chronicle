@@ -96,7 +96,8 @@ local defaults = {
     active_tab = 'mission',
     show_uncompletable = false,
     share_textures = true,  -- false: keep this addon's own textures (start 'noshare'), not the shared cache
-    pad = true,             -- the controller: L3 + R3 takes it (nui's pad hook, XInput only); false never hooks it
+    pad = true,             -- the controller: the chord takes it (nui's pad hook, XInput only); false never hooks it
+    pad_chord = 'l3+r3',    -- that chord: two buttons, a name for ui/pad.lua's pad.parse_chord ('l3+r3', 'lb+rb', 'back+start')
     nav = true,             -- the keyboard: the nav key takes the arrows, Enter, Backspace, Escape, Tab, PgUp/PgDn, Home/End; false never takes a key
     nav_key = 'k',          -- that key: a name for ui/keys.lua's keys.parse ('k', 'ctrl+n', 'f10')
 }
@@ -261,14 +262,28 @@ app.on_hide = hide
 
 ---------------------------------------------------------------------------
 -- The controller: nui's pad hook (the pad the game reads; while Chronicle holds it, new presses, the sticks and the
--- triggers are kept from the game). L3 + R3 takes it and gives it back; so does //cr pad.
+-- triggers are kept from the game). The chord (L3 + R3 unless the player chose another) takes it and gives it back; so does
+-- //cr pad.
 ---------------------------------------------------------------------------
 local padc = {dec = pad.new(), joined = false, held = false, retry_at = 0, why = nil, prev = 0, acts = {}, frac = 0,
-              said = false, conflicts = {}}
+              said = false, conflicts = {}, wait = nil}
+local PAD_WAIT_S = 5            -- the Settings row "Controller buttons" waits this long for a press, then keeps the old chord
+
+-- The chord (settings.pad_chord), parsed again whenever the setting changes (a login reads the next character's). A name that
+-- does not parse falls back to L3 + R3. A new chord goes to the decoder, to the conflict check and, once joined, to the hook.
+local function pad_chord()
+    local want = settings.pad_chord or 'l3+r3'
+    if padc.chord and padc.chord_src == want then return padc.chord end
+    padc.chord, padc.chord_src = pad.parse_chord(want) or pad.parse_chord('l3+r3'), want
+    padc.dec:set_chord(padc.chord.mask)
+    padc.conflicts = pad.chord_conflicts(padc.cfg, padc.chord.mask)
+    if padc.joined and nui.N and nui.N.pad_chord then nui.N.pad_chord(padc.chord.mask) end
+    return padc.chord
+end
 
 local function pad_hint()
     local ok, back = padc.dec:labels()
-    return ok .. ' Open  ' .. back .. ' Back  LB RB Section  LT RT Page  L3+R3 Done'
+    return ok .. ' Open  ' .. back .. ' Back  LB RB Section  LT RT Page  ' .. pad_chord().label .. ' Done'
 end
 
 -- the game's own Confirm and Cancel, and whether it also uses L3 or R3. A registry read that needs no hook, so it runs
@@ -279,7 +294,7 @@ local function pad_read_config()
     local cfg = nui.N.pad_config()
     padc.cfg = type(cfg) == 'table' and cfg or nil
     padc.dec.confirm, padc.dec.cancel, padc.xinput = pad.from_config(padc.cfg)
-    padc.conflicts = pad.chord_conflicts(padc.cfg)
+    padc.conflicts = pad.chord_conflicts(padc.cfg, pad_chord().mask)
 end
 
 -- join the hook. On the client's own XInput wrapper (nui 1.5.0) that works at once. On the fallback, while xinput1_3.dll is
@@ -291,9 +306,9 @@ local function pad_join(now)
     local ok, msg, retry_ms = nui.N.pad_start()
     if ok then
         padc.joined, padc.why = true, nil
-        -- nui 1.4.0: the hook keeps L3 + R3 from the game itself, so the chord never sits the player down or turns the
-        -- camera (a lone L3 or R3 reaches the game up to 150 ms late; a tap of one still does)
-        if nui.N.pad_chord then nui.N.pad_chord(pad.CHORD) end
+        -- nui 1.4.0: the hook keeps the chord from the game itself, so L3 + R3 never sits the player down or turns the
+        -- camera (a lone chord button reaches the game up to 150 ms late; a tap of one still does)
+        if nui.N.pad_chord then nui.N.pad_chord(pad_chord().mask) end
         return true
     end
     padc.why = msg
@@ -302,7 +317,9 @@ local function pad_join(now)
 end
 
 local kbd_hint                  -- the keyboard's line of keys (below): the hint again when the pad goes and the keys stay
+local pad_wait_end              -- the Settings row's wait for two buttons (below)
 pad_give = function()
+    if padc.wait then pad_wait_end() end
     if not padc.held then return end
     padc.held = false
     if nui.N and nui.N.pad_capture then nui.N.pad_capture(false) end
@@ -321,9 +338,11 @@ local function pad_take(buttons)
     win:pad_enter(pad_hint(), 'pad')
     if not padc.said then
         padc.said = true
-        say('controller: L3+R3 gives it back to the game')
+        local c = pad_chord()
+        say('controller: ' .. c.label .. ' gives it back to the game')
         if #padc.conflicts > 0 and not nui.N.pad_chord then
-            say('your FFXI pad config also uses L3 or R3: pressing both does that too (a newer _chronicle.dll stops it)', 167)
+            say(('your FFXI pad config also uses %s or %s: pressing both does that too (a newer _chronicle.dll stops it)')
+                :format(pad.CHORD_LABEL[c.name:match('^[^+]+')], pad.CHORD_LABEL[c.name:match('[^+]+$')]), 167)
         end
     end
 end
@@ -361,6 +380,7 @@ end
 
 -- prerender: one read of the pad (numbers, no table); nothing else unless something changed. Not holding the pad, only the
 -- chord is looked for.
+local pad_wait_tick              -- the Settings row's wait for two buttons (below)
 local function pad_tick(now)
     if settings.pad == false or not (nui.N and nui.N.pad) then return end
     if not padc.joined then
@@ -369,8 +389,14 @@ local function pad_tick(now)
     local seq, buttons, lt, rt, lx, ly, rx, ry, _, holding = nui.N.pad()
     if not seq or seq < 0 then return end
     buttons = buttons or 0
+    local C = pad_chord().mask
+    if padc.wait then
+        pad_wait_tick(now, buttons, holding)
+        padc.prev = buttons
+        return
+    end
     if not padc.held then
-        if pad.band(buttons, pad.CHORD) == pad.CHORD and pad.band(padc.prev, pad.CHORD) ~= pad.CHORD then pad_take(buttons) end
+        if pad.band(buttons, C) == C and pad.band(padc.prev, C) ~= C then pad_take(buttons) end
         padc.prev = buttons
         return
     end
@@ -383,7 +409,7 @@ local function pad_tick(now)
     local acts, scroll = padc.dec:feed(now, buttons, lt, rt, lx, ly, rx, ry, padc.acts)
     for i = 1, #acts do
         nav_act(acts[i], pad_give, pad_hint())
-        if not padc.held then break end
+        if not padc.held or padc.wait then break end
     end
     if padc.held and scroll ~= 0 and win then
         padc.frac = padc.frac + scroll
@@ -409,12 +435,80 @@ local function pad_status_lines()
     local st = nui.N and nui.N.pad_status and nui.N.pad_status()
     if not st then say('controller: _chronicle.dll has no controller support', 167) return end
     pad_read_config()                      -- in case nothing has tried the hook yet
-    say(('controller %s | %s | %s'):format(padc.held and 'held' or (padc.joined and 'ready (L3+R3)' or 'not joined'),
+    local c = pad_chord()
+    say(('controller %s | %s | %s'):format(padc.held and 'held' or (padc.joined and ('ready (' .. c.label .. ')') or 'not joined'),
         tostring(st.describe), padc.why and ('why: ' .. padc.why) or ('reads ' .. tostring(st.reads))))
     local ok, back = padc.dec:labels()
     say(('game pad config: %s | XInput %s | Confirm %s, Cancel %s%s'):format(padc.cfg and padc.cfg.key or 'not found',
         padc.xinput == nil and '?' or (padc.xinput and 'on' or 'off'), ok, back,
-        #padc.conflicts > 0 and ' | L3/R3 also mapped in the game' or ''))
+        #padc.conflicts > 0 and (' | ' .. c.label:gsub('%+', '/') .. ' also mapped in the game') or ''))
+end
+
+-- A new chord (the command, or the Settings row's wait). -> the chord, or nil and why
+local function pad_set_chord(name)
+    local c, why = pad.parse_chord(name)
+    if not c then return nil, why end
+    settings.pad_chord = c.name
+    save()
+    pad_chord()
+    if padc.held and win then win:pad_hint_for(pad_hint()) win:flush() end
+    return c
+end
+
+-- The Settings row "Controller buttons": the next two buttons held together are the chord. While it waits, Chronicle holds
+-- the pad (the hook's rules: a button the game saw go down stays the game's until released, and a press made while Chronicle
+-- holds the pad stays hidden until released, also after the pad goes back), so the game sees none of it. Buttons held when the
+-- wait starts (the Confirm that chose the row) count only once released. Escape, Cancel pressed alone, or PAD_WAIT_S with
+-- nothing pressed keeps the old chord.
+local function pad_wait_start()
+    if settings.pad == false then say('controller off (//' .. ident.short .. ' pad on)', 167) return end
+    if not padc.joined then
+        say('controller: Chronicle is not reading the controller, so it cannot wait for buttons (//' .. ident.short ..
+            ' pad status says why)', 167)
+        return
+    end
+    padc.wait = {latched = padc.prev or 0, one = 0, until_ = os.clock() + PAD_WAIT_S}
+    nui.N.pad_capture(true)
+end
+
+-- the wait is over: the pad goes back unless Chronicle holds it for the cursor; what is held now acts only once released
+pad_wait_end = function(buttons)
+    if not padc.wait then return end
+    padc.wait = nil
+    buttons = buttons or padc.prev or 0
+    if padc.held then
+        padc.dec:latch(buttons)
+        padc.dec.prev = buttons
+    elseif nui.N and nui.N.pad_capture then
+        nui.N.pad_capture(false)
+    end
+    if win then win:invalidate('all') win:flush() end
+end
+
+pad_wait_tick = function(now, buttons, holding)
+    local w = padc.wait
+    if not holding then nui.N.pad_capture(true) end      -- the hold lapsed (a long stall): take it again
+    w.latched = pad.band(w.latched, buttons)
+    local live = buttons - pad.band(buttons, w.latched)
+    local n = pad.count(live)
+    if n >= 2 then
+        local old = pad_chord().label
+        local c, why = pad_set_chord(pad.chord_name(live))
+        if c then say('controller: ' .. c.label .. ' takes and gives back the controller')
+        else say('controller: ' .. why .. '. ' .. old .. ' kept', 167) end
+        pad_wait_end(buttons)
+        return
+    end
+    if n == 1 then
+        w.one, w.until_ = live, now + PAD_WAIT_S
+        return
+    end
+    if w.one ~= 0 and w.one == pad.B[padc.dec.cancel] then pad_wait_end(buttons) return end    -- Cancel alone: keep it
+    w.one = 0
+    if now >= w.until_ then
+        say('controller: nothing pressed, ' .. pad_chord().label .. ' kept')
+        pad_wait_end(buttons)
+    end
 end
 
 ---------------------------------------------------------------------------
@@ -515,6 +609,11 @@ end
 local function kbd_down(dik, now)
     if kbd.took[dik] then return true end                -- held (Windower repeating it): the arrow repeats on our clock
     if kbd.game[dik] then return false end               -- the game saw this press: its repeats are the game's too
+    if padc.wait and dik == KEY_ESC then                 -- the Settings row waits for two buttons: Escape keeps the old chord
+        kbd.took[dik] = true
+        pad_wait_end()
+        return true
+    end
     if kbd.capture and not keys.modifier(dik) then
         kbd.took[dik] = true
         kbd_capture(dik)
@@ -555,7 +654,8 @@ end
 
 -- the block Chronicle wants: the keys held, or the search box focused, on a window that draws
 local function kbd_want_block()
-    return (kbd.held or kbd.capture or (win and win.focus ~= nil)) and win and win.visible and nui.drawing and true or false
+    return (kbd.held or kbd.capture or padc.wait or (win and win.focus ~= nil)) and win and win.visible and nui.drawing
+        and true or false
 end
 
 -- after every key and once a frame: the block follows what is wanted, but changes only while no key is down
@@ -604,6 +704,8 @@ app.prefs = {
     end,
     -- the Settings row "Keyboard key": the key, or the prompt while the next key press is awaited
     nav_key = function() return kbd.capture and 'Press a key' or kbd_key().label end,
+    -- the Settings row "Controller buttons": the chord, or the prompt while two buttons are awaited
+    pad_chord = function() return padc.wait and 'Press two buttons' or pad_chord().label end,
     scale_name = function()
         local m = settings.scale_mode or 'one'
         if m == 'sim' then return ('Sim %dx%d'):format(settings.sim_w, settings.sim_h) end
@@ -632,6 +734,8 @@ app.prefs = {
         elseif key == 'nav' then
             settings.nav = settings.nav == false
             if settings.nav == false then kbd_give() kbd.capture = false end
+        elseif key == 'pad_chord' then
+            if padc.wait then pad_wait_end() else pad_wait_start() end    -- a second click cancels
         elseif key == 'nav_key' then
             kbd.capture = not kbd.capture       -- the next key pressed is the nav key (kbd_capture); a second click cancels
         elseif key == 'reset' then
@@ -697,7 +801,7 @@ end
 
 windower.register_event('prerender', function()
     -- the keyboard block first: an error further on must never keep the game's keyboard blocked
-    if kbd.block or kbd.held or kbd.capture or (win and win.focus) then kbd_block(os.clock()) end
+    if kbd.block or kbd.held or kbd.capture or padc.wait or (win and win.focus) then kbd_block(os.clock()) end
     pad_tick(os.clock())
     kbd_tick(os.clock())
     if not win then
@@ -897,7 +1001,8 @@ local HELP = {
     '  //%s scale one | ui | sim <w> <h> | auto | off',
     '  //%s wintype auto | 1-8',
     '  //%s uncompletable   toggle uncompletable quests',
-    '  //%s pad [on | off | status]   take the controller (L3+R3 does too)',
+    '  //%s pad [on | off | status]   take the controller (L3+R3, or your chord, does too)',
+    '  //%s pad chord [name]   the two buttons that take it: l3+r3, lb+rb, back+start ...',
     '  //%s nav [on | off | key <name>]   take the keyboard\'s arrows (the nav key, K, does too)',
     '  //%s q [area] | m [area]   summaries in chat',
     '  //%s progress [log | debug]   quest step progress',
@@ -989,7 +1094,17 @@ windower.register_event('addon command', function(...)
             for _, key in ipairs(progress.keys()) do say('progress ' .. key .. ':') progress.report(key) end
         end
     elseif cmd == 'pad' or cmd == 'controller' then
-        if a == 'on' or a == 'off' then
+        if a == 'chord' then
+            if not b then
+                say('controller: ' .. pad_chord().label .. ' takes and gives back the controller (//' .. ident.short ..
+                    ' pad chord <name>)')
+                return
+            end
+            local ch, why = pad_set_chord(table.concat(args, ' ', 3))
+            if ch then say('controller: ' .. ch.label .. ' takes and gives back the controller')
+            else say('controller: ' .. why, 167) end
+            if win and app.view.name == 'settings' then win:invalidate('all') win:flush() end
+        elseif a == 'on' or a == 'off' then
             settings.pad = a == 'on'
             save()
             if a == 'off' then pad_off() else padc.retry_at = 0 end

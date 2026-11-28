@@ -110,13 +110,13 @@ jumping to the top.
 
 ## With a controller
 
-Press **L3 and R3 together** (both sticks in) to give the controller to Chronicle; press them again to give
-it back. While Chronicle has it, the game does not see what you press, so the D-pad moves Chronicle's cursor
+Press **L3 and R3 together** (both sticks in) to give the controller to Chronicle. Press them again to give it
+back. You can choose two other buttons for this (see below). While Chronicle has it, the game does not see what you press, so the D-pad moves Chronicle's cursor
 and not the game's.
 
 The game never sees the L3 + R3 chord either, so it does not also sit you down or change the camera. To make
-that work, an L3 or R3 pressed on its own reaches the game up to 150 ms late, while Chronicle waits to see
-whether the other one follows. A quick tap of one still reaches the game.
+that work, an L3 or R3 pressed on its own reaches the game up to 150 ms late. In that time, Chronicle waits for
+the other one. A quick tap of one still reaches the game.
 
 | Button | What it does |
 |---|---|
@@ -138,9 +138,9 @@ On a long walkthrough, the D-pad goes from link to link. Where there is a long s
 click, it scrolls by a third of a page instead, so you can read the whole page with it. Going back puts the
 cursor on the card or row you came from.
 
-A button you were already holding when you pressed L3 + R3 still belongs to the game until you let go of it, and
-a button you pressed while Chronicle had the controller stays away from the game until you let go of it, even if
-you give the controller back first. The game never sees half a press. Moving the mouse over the window gives the
+A button you were already holding when you pressed L3 + R3 still belongs to the game until you let go of it. A
+button you pressed while Chronicle had the controller stays away from the game until you let go of it, even if you
+give the controller back first. The game never sees half a press. Moving the mouse over the window gives the
 hover back to the mouse until you next use the controller.
 
 The controller has to be in the game's **XInput** mode: in the FFXI Config, on the Gamepad tab, turn on Enable
@@ -150,6 +150,24 @@ behind the game's back, so turn it off for FFXI.
 
 `//cr pad` does what L3 + R3 does, so it can be bound to a key with Windower's `bind`. `//cr pad off` stops
 Chronicle reading the controller at all, and the Settings screen has the same switch.
+
+L3 + R3 is the default chord. To use two other buttons, click "Controller buttons" on the Settings screen, or
+move the cursor to it and press Confirm. Then hold the two buttons you want together. Chronicle holds the
+controller while it waits, so the game sees none of these presses.
+
+To keep the old chord, press Escape on the keyboard, or press Cancel alone. A wait of 5 seconds with no press
+also keeps it.
+
+`//cr pad chord <name>` also sets the chord, for example `//cr pad chord lb+rb` or `//cr pad chord back+start`.
+The names are l3, r3, lb, rb, back, start, a, b, x and y. `//cr pad chord` alone names the chord. The hint line
+and the rest of this section then mean your chord where they say L3 + R3.
+
+The D-pad cannot be in the chord, because it moves the cursor. A trigger cannot be in it either. The hook cannot
+hold a trigger back from the game, so the game would see the trigger first.
+
+Each button of the chord waits for its partner. In the game, it arrives up to 150 ms late, as L3 and R3 do now.
+In Chronicle, it acts when you let go of it, so LB alone still goes to the previous section. If the chord does
+not use R3, R3 goes to the top as soon as you press it.
 
 ## With a keyboard
 
@@ -213,6 +231,7 @@ keys, and the Settings screen has the same switch.
 | `//cr wintype auto \| 1-8` | Follow the game's window style, or pin one |
 | `//cr uncompletable` | Show quests that can no longer be done |
 | `//cr pad [on \| off \| status]` | Take or give back the controller (as L3 + R3), turn it on or off, or say why it is not working |
+| `//cr pad chord [name]` | Name the chord that takes the controller, or choose two other buttons (`lb+rb`) |
 | `//cr nav [on \| off \| key <name>]` | Take or give back the keyboard's arrow keys (as K), turn K on or off, or choose another key |
 | `//cr q [area]` / `m [area]` | Summaries in the chat log |
 | `//cr status` | Drawing, memory and hook details |

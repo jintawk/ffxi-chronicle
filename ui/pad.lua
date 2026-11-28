@@ -9,9 +9,11 @@
         d:feed(now, buttons, lt, rt, lx, ly, rx, ry, out) -> out (a reused list of action names), scroll px
         d:latch(buttons)          -- buttons held now act only after they are released (taking the pad)
         d.confirm, d.cancel       -- 'a' / 'b' by default (pad.from_config swaps them for a B-confirm layout)
+        d:set_chord(mask)         -- the two buttons that take and give back the pad (pad.CHORD, L3 + R3, by default)
+        pad.parse_chord(name)     -- 'l3+r3', 'lb+rb', 'back+start' -> {mask, name, label, a, b}, or nil and why
 
     Actions: up down left right confirm cancel tab_prev tab_next page_up page_down sort filter settings
-    collapse top toggle (L3 + R3: take or give back the pad).
+    collapse top toggle (the chord: take or give back the pad).
 ]]
 
 local pad = {}
@@ -48,6 +50,60 @@ pad.band = band
 
 local function has(buttons, mask) return band(buttons, mask) ~= 0 end
 
+-- The chord's buttons by name, in the order a chord's name and label give them. The D-pad moves the cursor, so it is never
+-- a chord button. Nor are the triggers: nui's hook holds a chord button back from the game by hiding it in the button word
+-- (PadHook.h, apply_mask: hide and force touch only the low 16 bits), and a trigger is not in that word, so the game would
+-- see a trigger go down before its partner came. The Guide button is not in what XInputGetState reports.
+local CHORD_ORDER = {'l3', 'r3', 'lb', 'rb', 'back', 'start', 'a', 'b', 'x', 'y'}
+local CHORD_LABEL = {l3 = 'L3', r3 = 'R3', lb = 'LB', rb = 'RB', back = 'Back', start = 'Start',
+                     a = 'A', b = 'B', x = 'X', y = 'Y', lt = 'LT', rt = 'RT',
+                     up = 'Up', down = 'Down', left = 'Left', right = 'Right'}
+local CHORD_ALIAS = {ls = 'l3', rs = 'r3', select = 'back', view = 'back', menu = 'start',
+                     l1 = 'lb', r1 = 'rb', l2 = 'lt', r2 = 'rt'}
+local CHORD_RANK = {}
+for i, n in ipairs(CHORD_ORDER) do CHORD_RANK[n] = i end
+pad.CHORD_LABEL = CHORD_LABEL
+
+-- A chord by name: two buttons joined by '+' ('l3+r3', 'LB + RB', 'start+back'). -> {mask, name ('l3+r3', in a fixed order),
+-- label ('L3+R3'), a, b (the two bits)}, or nil and why
+function pad.parse_chord(name)
+    local s = tostring(name or ''):lower():gsub('%s+', '')
+    local parts = {}
+    for p in (s .. '+'):gmatch('([^+]*)%+') do parts[#parts + 1] = CHORD_ALIAS[p] or p end
+    if #parts ~= 2 or parts[1] == '' or parts[2] == '' then
+        return nil, 'a chord is two buttons joined by +, for example l3+r3'
+    end
+    for _, p in ipairs(parts) do
+        if not B[p] then return nil, 'not a button name: ' .. p end
+        if p == 'up' or p == 'down' or p == 'left' or p == 'right' then
+            return nil, 'the D-pad (' .. CHORD_LABEL[p] .. ') moves the cursor, so it cannot be in the chord'
+        end
+        if p == 'lt' or p == 'rt' then
+            return nil, 'a trigger (' .. CHORD_LABEL[p] .. ') cannot be in the chord: the game would see it before its partner'
+        end
+    end
+    if parts[1] == parts[2] then return nil, 'a chord is two different buttons' end
+    table.sort(parts, function(x, y) return CHORD_RANK[x] < CHORD_RANK[y] end)
+    return {mask = B[parts[1]] + B[parts[2]], a = B[parts[1]], b = B[parts[2]], name = parts[1] .. '+' .. parts[2],
+            label = CHORD_LABEL[parts[1]] .. '+' .. CHORD_LABEL[parts[2]]}
+end
+
+-- the buttons held, as a chord name for pad.parse_chord (any number of buttons: the parser says what is wrong)
+function pad.chord_name(buttons)
+    local names = {}
+    for _, n in ipairs({'l3', 'r3', 'lb', 'rb', 'lt', 'rt', 'back', 'start', 'a', 'b', 'x', 'y', 'up', 'down', 'left', 'right'}) do
+        if has(buttons, B[n]) then names[#names + 1] = n end
+    end
+    return table.concat(names, '+')
+end
+
+-- how many buttons are held (the triggers count)
+function pad.count(buttons)
+    local n = 0
+    for _, m in pairs(B) do if has(buttons, m) then n = n + 1 end end
+    return n
+end
+
 -- The game's own Confirm and Cancel, from its pad settings (nui's pad_config(): padmode000, padsin000). In
 -- XInput mode slot 7 is Confirm and slot 5 Cancel, as button ids (0 B, 1 X, 2 Y, 3 A). -> confirm, cancel
 -- ('a', 'b' unless the game says otherwise), and whether the game's XInput mode is on (nil: unknown)
@@ -63,15 +119,21 @@ function pad.from_config(cfg)
     return 'a', 'b', xinput
 end
 
--- The game's use of L3 and R3 (padsin000 ids 10 and 13 in XInput mode): the slots that would also act
--- on the chord, by index (0-based, as the game's config documents them). -> list, empty when free
-function pad.chord_conflicts(cfg)
+-- The game's button ids in padsin000 (XInput mode), where they are known (docs/controller-support.md §3): 0 B, 1 X, 2 Y,
+-- 3 A, 10 L3, 13 R3. LB, RB, Start and Back have ids too, but nobody has confirmed them, so a chord with them is not checked.
+local SIN_ID = {[B.b] = 0, [B.x] = 1, [B.y] = 2, [B.a] = 3, [B.l3] = 10, [B.r3] = 13}
+
+-- The game's use of the chord's buttons (L3 and R3 by default): the padsin000 slots that would also act on the chord, by
+-- index (0-based, as the game's config documents them). -> list, empty when free (or when no button's id is known)
+function pad.chord_conflicts(cfg, mask)
     local out = {}
     if type(cfg) ~= 'table' then return out end
+    mask = mask or pad.CHORD
+    local ids = {}
+    for bit_, id in pairs(SIN_ID) do if has(mask, bit_) then ids[id] = true end end
     local i = 0
     for n in tostring(cfg.padsin or ''):gmatch('-?%d+') do
-        local v = tonumber(n)
-        if v == 10 or v == 13 then out[#out + 1] = i end
+        if ids[tonumber(n)] then out[#out + 1] = i end
         i = i + 1
     end
     return out
@@ -87,9 +149,21 @@ function pad.new()
         dir = nil, next_at = 0,       -- the direction held, and when it repeats
         stick = nil,                  -- the direction the left stick holds (with hysteresis)
         last = nil,                   -- the time of the last feed
-        r3_alone = false,             -- R3 went down without L3: Top on its release
+        alone = 0,                    -- a chord button that went down without its partner: its action on release
+        chord = pad.CHORD, ca = B.l3, cb = B.r3,     -- the chord, and its two buttons
         confirm = 'a', cancel = 'b',
     }, D)
+end
+
+-- the chord's two buttons (mask: two bits of pad.B)
+function D:set_chord(mask)
+    mask = mask or pad.CHORD
+    local a, b
+    for _, n in ipairs(CHORD_ORDER) do
+        if has(mask, B[n]) then if a then b = B[n] else a = B[n] end end
+    end
+    if not (a and b) then a, b, mask = B.l3, B.r3, pad.CHORD end
+    self.chord, self.ca, self.cb, self.alone = mask, a, b, 0
 end
 
 -- the left stick as a direction, with hysteresis (on past STICK_ON, off inside STICK_OFF)
@@ -110,12 +184,23 @@ end
 
 function D:latch(buttons)
     self.latched = buttons or self.prev
-    self.dir, self.r3_alone = nil, false
+    self.dir, self.alone = nil, 0
 end
 
 local FACE = {'a', 'b', 'x', 'y'}
 local OTHER = {x = 'sort', y = 'filter', a = 'sort', b = 'filter'}   -- a or b only when Confirm / Cancel are elsewhere
 local DIRS = {'up', 'down', 'left', 'right'}
+local PRESS = {lb = 'tab_prev', rb = 'tab_next', lt = 'page_up', rt = 'page_down', start = 'settings', back = 'collapse'}
+
+-- what a button does on its own (nil: nothing, as L3)
+local function action_of(self, bit_)
+    for _, f in ipairs(FACE) do
+        if bit_ == B[f] then return (f == self.confirm and 'confirm') or (f == self.cancel and 'cancel') or OTHER[f] end
+    end
+    if bit_ == B.r3 then return 'top' end
+    for n, a in pairs(PRESS) do if bit_ == B[n] then return a end end
+    return nil
+end
 
 -- One frame. -> out (cleared and refilled), scroll (px to scroll this frame, + is down)
 function D:feed(now, buttons, lt, rt, lx, ly, rx, ry, out)
@@ -125,7 +210,7 @@ function D:feed(now, buttons, lt, rt, lx, ly, rx, ry, out)
     local dt = self.last and math.max(0, math.min(0.1, now - self.last)) or 0
     self.last = now
     -- nothing held, nothing changed: the frame costs nothing (no closures, no tables)
-    if buttons == 0 and self.prev == 0 and not self.dir and self.latched == 0 and not self.r3_alone
+    if buttons == 0 and self.prev == 0 and not self.dir and self.latched == 0 and self.alone == 0
         and math.abs(lx or 0) < pad.STICK_OFF and math.abs(ly or 0) < pad.STICK_OFF
         and math.abs(ry or 0) <= pad.SCROLL_DEAD * 32767 then
         self.stick = nil
@@ -142,30 +227,34 @@ function D:feed(now, buttons, lt, rt, lx, ly, rx, ry, out)
     local function down(m) return has(live, m) and not has(prev, m) end
     local function up(m) return not has(buttons, m) and has(prev, m) end
 
-    -- the chord first: both stick buttons; their own actions wait for it
-    if has(live, pad.CHORD) and pad.CHORD == band(live, pad.CHORD) and (down(B.l3) or down(B.r3)) then
+    -- the chord first (L3 + R3 by default). Its buttons' own actions wait for it: a chord button alone acts on its release
+    -- (R3 alone is Top), and not at all once its partner is held
+    local C, ca, cb = self.chord, self.ca, self.cb
+    if band(live, C) == C and (down(ca) or down(cb)) then
         out[#out + 1] = 'toggle'
-        self.r3_alone = false
-    elseif down(B.r3) and not has(live, B.l3) then
-        self.r3_alone = true
-    elseif self.r3_alone and up(B.r3) then
-        self.r3_alone = false
-        out[#out + 1] = 'top'
+        self.alone = 0
+    elseif self.alone == 0 and down(cb) and not has(live, ca) then
+        self.alone = cb
+    elseif self.alone == 0 and down(ca) and not has(live, cb) then
+        self.alone = ca
+    elseif self.alone ~= 0 and up(self.alone) then
+        local a = action_of(self, self.alone)
+        self.alone = 0
+        if a then out[#out + 1] = a end
     end
-    if has(live, B.l3) then self.r3_alone = false end
+    if self.alone ~= 0 and has(live, C - self.alone) then self.alone = 0 end
 
-    -- buttons: on press
+    -- buttons: on press (a chord button: above); R3 out of the chord is Top on press
     for _, f in ipairs(FACE) do
-        if down(B[f]) then
-            out[#out + 1] = (f == self.confirm and 'confirm') or (f == self.cancel and 'cancel') or OTHER[f]
-        end
+        if down(B[f]) and not has(C, B[f]) then out[#out + 1] = action_of(self, B[f]) end
     end
-    if down(B.lb) then out[#out + 1] = 'tab_prev' end
-    if down(B.rb) then out[#out + 1] = 'tab_next' end
+    if down(B.lb) and not has(C, B.lb) then out[#out + 1] = 'tab_prev' end
+    if down(B.rb) and not has(C, B.rb) then out[#out + 1] = 'tab_next' end
     if down(B.lt) then out[#out + 1] = 'page_up' end
     if down(B.rt) then out[#out + 1] = 'page_down' end
-    if down(B.start) then out[#out + 1] = 'settings' end
-    if down(B.back) then out[#out + 1] = 'collapse' end
+    if down(B.start) and not has(C, B.start) then out[#out + 1] = 'settings' end
+    if down(B.back) and not has(C, B.back) then out[#out + 1] = 'collapse' end
+    if down(B.r3) and not has(C, B.r3) then out[#out + 1] = 'top' end
 
     -- a direction: the D-pad, else the left stick; one at a time, repeating while held
     self.stick = stick_dir(self, lx or 0, ly or 0)
