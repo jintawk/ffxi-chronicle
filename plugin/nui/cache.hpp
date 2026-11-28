@@ -11,6 +11,9 @@
 // output byte, so two library versions that decode differently never share a texture.
 // test/golden_fmt.json holds each kind's pixel hash with its fmt; test_render fails when the
 // pixels change and the fmt does not.
+// A change that lets a load succeed where it failed before changes the output too, even when a stock
+// install decodes exactly as it did. The golden only sees a stock install, so it cannot catch that: bump
+// the fmt by hand (atlas 3, below).
 #pragma once
 
 #ifdef NUI_TEST_CLOCK                    // test: every module of a test reads the driver's clock
@@ -24,7 +27,10 @@ extern "C" unsigned long __cdecl nui_test_now();
 
 namespace nui {
 
-constexpr std::uint32_t kFmtAtlas = 2, kFmtIcon = 1, kFmtPicture = 1;   // atlas 2 (1.2.3): + 'menu    menu2fon'
+// atlas 2 (1.2.3): + 'menu    menu2fon'. atlas 3: an HD texture pack's art, boxed down to the game's
+// size. 1.2.10 cannot read it, so under atlas 2 a module on each version would share one entry, and the
+// first to create it would decide whether the other drew any window art.
+constexpr std::uint32_t kFmtAtlas = 3, kFmtIcon = 1, kFmtPicture = 1;
 
 inline NcKey atlas_key(int window_type, std::uint64_t install) {
     return NcKey {NC_ATLAS, kFmtAtlas, std::uint32_t(window_type), 0, install};

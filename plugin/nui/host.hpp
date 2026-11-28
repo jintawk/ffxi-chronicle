@@ -69,6 +69,8 @@
 //        us_decode_bg(_max), decode_failed, decode_cancelled, decodes_pending (now), decode_threads (now);
 //        1.2.6: tex_load_read_max (bytes: the most one tex_load read on the Lua thread)
 //   us() -> number                             1.2.0: microseconds since the module was opened (QPC)
+//   pad_start, pad, pad_capture, pad_chord, pad_config, pad_status, pad_stop
+//                                              the controller the game reads (pad.hpp)
 //
 // Threads (1.2.0): Lua runs on the addon's worker thread, the draw on the game's render thread.
 // The worker parses and builds a layer and cuts icons before it locks, then swaps the finished work

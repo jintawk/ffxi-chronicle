@@ -10,6 +10,7 @@
 #endif
 #include <windows.h>
 
+#include <cctype>
 #include <cstdio>
 #include <cstring>
 
@@ -239,8 +240,9 @@ bool tex_info(std::vector<unsigned char> const& buf, Chunk const& c, int rows, T
     t.h = hh;
     // A size from the file bounds every count below: without this a header claiming 0x2000000 rows
     // makes `need` wrap to 0 in 32 bits, the byte check passes and the decode reads off the end.
-    // 4096 is the client's own largest texture (the atlas is 1024 x 512).
-    if (w <= 0 || hh <= 0 || w > 4096 || hh > 4096) {
+    // 4096 is the client's own largest texture (the atlas is 1024 x 512); 8192 lets an HD texture
+    // pack's moji (1024 wide in the game) through at up to 8 times that.
+    if (w <= 0 || hh <= 0 || w > 8192 || hh > 8192) {
         why = "size " + std::to_string(w) + "x" + std::to_string(hh);
         return false;
     }
@@ -265,32 +267,137 @@ bool tex_info(std::vector<unsigned char> const& buf, Chunk const& c, int rows, T
     return true;
 }
 
+// How many times larger than the game's own texture this one is: 1, or 2, 4 or 8 for an HD texture
+// pack (2026-11-24: a pack's window art arrived as 'newtex 512x512 not 128x128', its gauge as
+// 128x128, and the addon drew a plain frame and a flat bar in their place). 0: neither.
+int tex_scale(TexInfo const& t, int want_w, int rows) {
+    for (int s = 1; s <= 8; s *= 2)
+        if (t.w == want_w * s && t.h >= rows * s) return s;
+    return 0;
+}
+
+// An image s times the size wanted, boxed down to it: each texel the average of its s x s block, the
+// colour weighted by alpha so a clear texel's colour does not darken an opaque edge next to it. A block
+// with no opaque texel at all keeps its plain average colour: the stock decode keeps a clear texel's
+// colour too, and linear filtering samples it at an edge (test/hd_linux: an enlarged texture boxes down
+// to the stock texels exactly).
+void box_down(std::vector<uint32_t> const& src, int sw, int s, uint32_t* dst, int w, int rows, int stride) {
+    unsigned const n = unsigned(s) * unsigned(s);
+    for (int y = 0; y < rows; ++y)
+        for (int x = 0; x < w; ++x) {
+            uint64_t sa = 0, sr = 0, sg = 0, sb = 0, pr = 0, pg = 0, pb = 0;
+            for (int j = 0; j < s; ++j) {
+                uint32_t const* row = &src[size_t(y * s + j) * size_t(sw) + size_t(x) * size_t(s)];
+                for (int i = 0; i < s; ++i) {
+                    uint32_t const p = row[i];
+                    uint32_t const a = p >> 24;
+                    sa += a;
+                    sr += uint64_t((p >> 16) & 0xFF) * a;
+                    sg += uint64_t((p >> 8) & 0xFF) * a;
+                    sb += uint64_t(p & 0xFF) * a;
+                    pr += (p >> 16) & 0xFF;
+                    pg += (p >> 8) & 0xFF;
+                    pb += p & 0xFF;
+                }
+            }
+            uint32_t const a = uint32_t((sa + n / 2) / n);
+            uint32_t r, g, b;
+            if (sa) {
+                r = uint32_t((sr + sa / 2) / sa);
+                g = uint32_t((sg + sa / 2) / sa);
+                b = uint32_t((sb + sa / 2) / sa);
+            } else {
+                r = uint32_t((pr + n / 2) / n);
+                g = uint32_t((pg + n / 2) / n);
+                b = uint32_t((pb + n / 2) / n);
+            }
+            dst[size_t(y) * size_t(stride) + size_t(x)] = (a << 24) | (r << 16) | (g << 8) | b;
+        }
+}
+
+// t's top `rows` rows decoded into dst (stride in pixels)
+void decode(std::vector<unsigned char> const& buf, TexInfo const& t, int rows, uint32_t* dst, int stride) {
+    switch (t.fourcc) {
+        case 0x44585431: dxt1(&buf[t.px], dst, t.w, rows, stride); return;
+        case 0x44585432:                // premultiplied DXT3
+        case 0x44585433: dxt3(&buf[t.px], dst, t.w, rows, stride); return;
+        case 0x44585434:                // premultiplied DXT5
+        case 0x44585435: dxt5(&buf[t.px], dst, t.w, rows, stride); return;
+        default: raw_rows(&buf[t.px], &buf[t.pal], t.bits, t.w, t.h, rows, dst, stride); return;
+    }
+}
+
 // a 0x20 texture chunk -> its top `rows` rows decoded into the atlas at (ax, ay); `why` takes the
-// reason it could not be (assets missing: it names the piece that stopped the load)
+// reason it could not be (assets missing: it names the piece that stopped the load), `scale` how many
+// times the game's size it was stored at (an HD texture pack: boxed down to the game's size here, so
+// every texel coordinate below and in ui.cpp stays the game's own)
 bool blit_texture(std::vector<unsigned char> const& buf, Chunk const& c, int want_w, int rows,
-                  std::vector<uint32_t>& atlas, int ax, int ay, std::string* why = nullptr) {
+                  std::vector<uint32_t>& atlas, int ax, int ay, std::string* why = nullptr, int* scale = nullptr) {
     std::string reason;
     TexInfo t;
     if (!tex_info(buf, c, rows, t, reason)) {
         if (why) *why = reason;
         return false;
     }
-    if (t.w != want_w || t.h < rows) {
+    int const s = tex_scale(t, want_w, rows);
+    if (s == 0) {
         if (why)
             *why = std::to_string(t.w) + "x" + std::to_string(t.h) + " not " + std::to_string(want_w) + "x" +
                    std::to_string(rows);
         return false;
     }
+    // tex_info bounded the bytes for `rows` rows; an HD texture is read for rows * s of them
+    if (s > 1 && !tex_info(buf, c, rows * s, t, reason)) {
+        if (why) *why = reason;
+        return false;
+    }
+    if (scale) *scale = s;
     if (atlas.empty()) return true;     // metrics only (the atlas is in the shared cache): checked, not decoded
     uint32_t* dst = &atlas[size_t(ay) * kAtlasW + ax];
-    switch (t.fourcc) {
-        case 0x44585431: dxt1(&buf[t.px], dst, t.w, rows, kAtlasW); return true;
-        case 0x44585432:                // premultiplied DXT3
-        case 0x44585433: dxt3(&buf[t.px], dst, t.w, rows, kAtlasW); return true;
-        case 0x44585434:                // premultiplied DXT5
-        case 0x44585435: dxt5(&buf[t.px], dst, t.w, rows, kAtlasW); return true;
-        default: raw_rows(&buf[t.px], &buf[t.pal], t.bits, t.w, t.h, rows, dst, kAtlasW); return true;
+    if (s == 1) {
+        decode(buf, t, rows, dst, kAtlasW);
+        return true;
     }
+    std::vector<uint32_t> big(size_t(t.w) * size_t(rows) * size_t(s));
+    decode(buf, t, rows * s, big.data(), t.w);
+    box_down(big, t.w, s, dst, want_w, rows, kAtlasW);
+    return true;
+}
+
+// The texel rectangles of a sprite sheet whose texture an HD pack stored s times larger: a pack that
+// scaled the sheet with its texture has rectangles that run past the game's texture size (w x h), and
+// those are put back in the game's texels, which is what the atlas holds. One that left the sheet
+// alone is left alone. `match` picks the quads that use that texture.
+template <class Match>
+void unscale_sheet(std::vector<std::vector<SpriteQuad>>& sheet, int s, int w, int h, Match match) {
+    if (s <= 1) return;
+    bool past = false;
+    for (auto const& sp : sheet)
+        for (SpriteQuad const& q : sp)
+            if (match(q) && (q.u + q.w > w || q.vv + q.h > h)) past = true;
+    if (!past) return;
+    for (auto& sp : sheet)
+        for (SpriteQuad& q : sp)
+            if (match(q)) {
+                q.u = uint16_t(q.u / s);
+                q.vv = uint16_t(q.vv / s);
+                q.w = uint16_t(q.w / s);
+                q.h = uint16_t(q.h / s);
+            }
+}
+
+// the 8 byte name after a DAT name's 8 byte section, without its trailing spaces
+std::string trimmed(char const* name8) {
+    std::string n(name8, 8);
+    while (!n.empty() && n.back() == ' ') n.pop_back();
+    return n;
+}
+
+// a sprite's texture name is `name16` (16 bytes), ignoring case (window type 1 spells them "MENU    ")
+bool tex_named(SpriteQuad const& q, char const* name16) {
+    for (int i = 0; i < 16; ++i)
+        if (std::tolower(static_cast<unsigned char>(q.tex[i])) != name16[i]) return false;
+    return true;
 }
 
 // 0x31 sprite sheet payload -> sprites
@@ -431,18 +538,23 @@ bool Assets::load(std::string const& ffxi, int window_type, unsigned menu_fid, b
     else if (!slurp(wpath, wb)) why = short_path(ffxi, wpath) + " cannot be read";
     else {
         int got = 0;
-        auto one = [&](Chunk const& c, char const* name, int w, int rows, int ax, int ay) {
+        // each piece's name, the game's size and the scale it was found at (an HD texture pack: 2-8)
+        struct Piece { char const* name16; int w, h, s; };
+        Piece pieces[4] = {{"menu    newtex  ", 128, 128, 1}, {"menu    hfr1    ", 32, 32, 1},
+                           {"menu    vfr1    ", 32, 32, 1}, {"menu    corner  ", 32, 32, 1}};
+        auto one = [&](Chunk const& c, int k, int ax, int ay) {
             std::string r;
-            if (blit_texture(wb, c, w, rows, atlas, ax, ay, &r)) ++got;
-            else if (why.empty()) why = short_path(ffxi, wpath) + ": " + name + " " + r;
+            Piece& p = pieces[k];
+            if (blit_texture(wb, c, p.w, p.h, atlas, ax, ay, &r, &p.s)) ++got;
+            else if (why.empty()) why = short_path(ffxi, wpath) + ": " + trimmed(p.name16 + 8) + " " + r;
         };
         for (auto const& c : walk(wb)) {
             size_t const nm = c.off + 17;
             if (c.type == 0x20) {
-                if (name_is(wb, nm, "menu    newtex  ")) one(c, "newtex", 128, 128, kBodyX, kBodyY);
-                else if (name_is(wb, nm, "menu    hfr1    ")) one(c, "hfr1", 32, 32, kHfrX, kHfrY);
-                else if (name_is(wb, nm, "menu    vfr1    ")) one(c, "vfr1", 32, 32, kVfrX, kVfrY);
-                else if (name_is(wb, nm, "menu    corner  ")) one(c, "corner", 32, 32, kCornerX, kCornerY);
+                if (name_is(wb, nm, pieces[0].name16)) one(c, 0, kBodyX, kBodyY);
+                else if (name_is(wb, nm, pieces[1].name16)) one(c, 1, kHfrX, kHfrY);
+                else if (name_is(wb, nm, pieces[2].name16)) one(c, 2, kVfrX, kVfrY);
+                else if (name_is(wb, nm, pieces[3].name16)) one(c, 3, kCornerX, kCornerY);
             } else if (c.type == 0x31) {
 #ifndef NUI_FAULT_RECIPE_LAST             // self-test: the last sprite sheet, whatever its name (before 1.2.6)
                 if (name_is(wb, c.off + 16, "menu    win00   ")) frame = parse_sheet(wb, c);   // review REND-8: by name
@@ -451,6 +563,8 @@ bool Assets::load(std::string const& ffxi, int window_type, unsigned menu_fid, b
 #endif
             }
         }
+        for (Piece const& p : pieces)
+            unscale_sheet(frame, p.s, p.w, p.h, [&](SpriteQuad const& q) { return tex_named(q, p.name16); });
         have_window = got == 4 && frame_recipe_ok(frame);
         if (!have_window && why.empty())
             why = short_path(ffxi, wpath) + (got == 4 ? ": no win00 recipe" : ": " + std::to_string(got) + " of 4 pieces");
@@ -460,39 +574,54 @@ bool Assets::load(std::string const& ffxi, int window_type, unsigned menu_fid, b
 
     // menu DAT: fonts and gauge
     std::string const mpath = dat_path(ffxi, menu_fid);
-    std::string mwhy, gwhy;
+    std::string mwhy, gwhy, wtwhy, twhy;
     std::vector<unsigned char> mb;
-    if (mpath.empty()) mwhy = gwhy = "no DAT holds file " + std::to_string(menu_fid);
-    else if (!slurp(mpath, mb)) mwhy = gwhy = short_path(ffxi, mpath) + " cannot be read";
+    bool have_font = false;              // 'font    font', the title font's texture
+    int font_scale = 1;
+    std::vector<std::vector<SpriteQuad>> fontshp;
+    if (mpath.empty()) mwhy = gwhy = wtwhy = twhy = "no DAT holds file " + std::to_string(menu_fid);
+    else if (!slurp(mpath, mb)) mwhy = gwhy = wtwhy = twhy = short_path(ffxi, mpath) + " cannot be read";
     else {
-        mwhy = short_path(ffxi, mpath) + ": no font    moji";
-        gwhy = short_path(ffxi, mpath) + ": no menu    gauge";
+        std::string const sp = short_path(ffxi, mpath);
+        mwhy = sp + ": no font    moji";
+        gwhy = sp + ": no menu    gauge";
+        wtwhy = sp + ": no menu    menu2fon";
+        std::string fwhy = sp + ": no font    font", swhy = sp + ": no font    fontshp";
         for (auto const& c : walk(mb)) {
             size_t const nm = c.off + 17;
             if (c.type == 0x20 && !have_moji && name_is(mb, nm, "font    moji    "))
                 have_moji = blit_texture(mb, c, 1024, 32, atlas, kMojiX, kMojiY, &mwhy);
             else if (c.type == 0x20 && !have_gauge && name_is(mb, nm, "menu    gauge   "))
                 have_gauge = blit_texture(mb, c, 64, 64, atlas, kGaugeX, kGaugeY, &gwhy);
-            else if (c.type == 0x20 && name_is(mb, nm, "font    font    "))
-                blit_texture(mb, c, 256, 256, atlas, kFontX, kFontY);
-            else if (c.type == 0x20 && !have_wtitle && name_is(mb, nm, "menu    menu2fon"))
-                have_wtitle = blit_texture(mb, c, 256, 256, atlas, kM2fX, kM2fY);
-            else if (c.type == 0x31 && !have_title && name_is(mb, c.off + 16, "font    fontshp ")) {
-                auto sh = parse_sheet(mb, c);
-                if (sh.size() >= 95) {
-                    have_title = true;
-                    for (int i = 0; i < 95; ++i) {
-                        if (sh[i].empty()) { have_title = false; break; }
-                        SpriteQuad const& q = sh[i][0];
-                        Glyph& g = title[i];
-                        g.u0 = float(kFontX + q.u);
-                        g.v0 = float(kFontY + q.vv);
-                        g.u1 = float(kFontX + q.u + q.w);
-                        g.v1 = float(kFontY + q.vv + q.h);
-                        g.lw = float(q.v[6] - q.v[0]);
-                        g.lh = float(q.v[7] - q.v[1]);
-                        g.top = float(q.v[1]);
-                    }
+            else if (c.type == 0x20 && !have_font && name_is(mb, nm, "font    font    ")) {
+                have_font = blit_texture(mb, c, 256, 256, atlas, kFontX, kFontY, &fwhy, &font_scale);
+                if (!have_font) fwhy = sp + ": font " + fwhy;
+            } else if (c.type == 0x20 && !have_wtitle && name_is(mb, nm, "menu    menu2fon")) {
+                have_wtitle = blit_texture(mb, c, 256, 256, atlas, kM2fX, kM2fY, &wtwhy);
+                if (!have_wtitle) wtwhy = sp + ": menu2fon " + wtwhy;
+            } else if (c.type == 0x31 && fontshp.empty() && name_is(mb, c.off + 16, "font    fontshp ")) {
+                fontshp = parse_sheet(mb, c);
+                swhy = sp + ": fontshp has " + std::to_string(fontshp.size()) + " glyphs";
+            }
+        }
+        twhy = !have_font ? fwhy : swhy;
+        // the glyph table: only with its texture, or the title would be drawn from empty atlas texels
+        if (have_font) {
+            auto& sh = fontshp;
+            unscale_sheet(sh, font_scale, 256, 256, [](SpriteQuad const&) { return true; });
+            if (sh.size() >= 95) {
+                have_title = true;
+                for (int i = 0; i < 95; ++i) {
+                    if (sh[i].empty()) { have_title = false; twhy = sp + ": fontshp glyph " + std::to_string(i) + " empty"; break; }
+                    SpriteQuad const& q = sh[i][0];
+                    Glyph& g = title[i];
+                    g.u0 = float(kFontX + q.u);
+                    g.v0 = float(kFontY + q.vv);
+                    g.u1 = float(kFontX + q.u + q.w);
+                    g.v1 = float(kFontY + q.vv + q.h);
+                    g.lw = float(q.v[6] - q.v[0]);
+                    g.lh = float(q.v[7] - q.v[1]);
+                    g.top = float(q.v[1]);
                 }
             }
         }
@@ -510,8 +639,8 @@ bool Assets::load(std::string const& ffxi, int window_type, unsigned menu_fid, b
             wtitle[c.c - 0x20] = WGlyph {float(kM2fX + c.u), float(kM2fY + c.v), float(c.w), float(c.h), float(c.top), float(c.adv)};
     }
     log += have_moji ? "moji; " : "moji missing (" + mwhy + "); ";
-    log += have_wtitle ? "window title font; " : "window title font missing; ";
-    log += have_title ? "title font; " : "title font missing; ";
+    log += have_wtitle ? "window title font; " : "window title font missing (" + wtwhy + "); ";
+    log += have_title ? "title font; " : "title font missing (" + twhy + "); ";
     log += have_gauge ? "gauge" : "gauge missing (" + gwhy + ")";
     // Anything missing: say where the game was read from, so one chat line carries the whole answer.
     if (!(have_window && have_moji && have_wtitle && have_title && have_gauge)) log += "; in " + ffxi;
