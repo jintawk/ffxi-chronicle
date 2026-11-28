@@ -257,11 +257,17 @@ for _, key in ipairs(keys) do
         id = tonumber(id)
         local label = ('page_%s_%s_%d'):format(cat, area, id)
         local name
-        for _, it in ipairs(app.data.get_area_status(cat, area).items) do if it.id == id then name = it.name end end
+        if cat == 'record' then
+            -- a Records objective's page: drawn by the record screen, under the record's own details
+            name = app.roe and app.roe.locate(id) and app.roe.index().name[id] or nil
+        else
+            for _, it in ipairs(app.data.get_area_status(cat, area).items) do if it.id == id then name = it.name end end
+        end
         -- rule 104: a page of an entry Chronicle does not list is a data fault; say so and go on drawing (it used to crash the chunk and
         -- leave the pages after it undrawn), the run fails at the end
         if not name then unlisted[#unlisted + 1] = key end
-        if name then sized(label, function() app:entry(cat, area, name, id) end, function(each)
+        local open = cat == 'record' and function() app:roe_objective(id) end or function() app:entry(cat, area, name, id) end
+        if name then sized(label, open, function(each)
             -- the groups and their tab counts, from the page as drawn
             local groups = {}
             for _, h in ipairs(win.content_b.hits) do

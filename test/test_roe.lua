@@ -612,6 +612,63 @@ check('the breadcrumb names the path', crumbs[2].label == 'Tutorial' and crumbs[
 crumbs[3].go()
 check('a crumb opens the sub-category', app.view.name == 'rsub', app.view.name)
 
+-- A gate on a record no menu shows: the client's own flag ("Scenarios 15"), so the record names the step that sets it
+-- (roe/unlocks.lua). Every hidden record the client gates on, at any of the three levels, has a step, and no step is a flag's name.
+do
+    local menu, hidden = {}, {}
+    for _, c in ipairs(ix.cats) do for _, s in ipairs(c.subs) do for _, o in ipairs(s.o) do menu[o] = true end end end
+    local function scan(list)
+        for _, g in ipairs(list or {}) do
+            local v = g % 0x10000
+            if math.floor(g / 0x10000) == 1 and not menu[v] then hidden[v] = true end
+        end
+    end
+    for _, c in ipairs(ix.cats) do scan(c.g) for _, s in ipairs(c.subs) do scan(s.g) end end
+    for oid, gl in pairs(ix.gates) do if menu[oid] then scan(gl) end end
+    local n, lacking, named = 0, {}, {}
+    for v in pairs(hidden) do
+        n = n + 1
+        local step = app.roe.unlock_text(v)
+        if not step then lacking[#lacking + 1] = v
+        elseif step:find('Scenario') or (ix.gate_names[v] and ix.gate_names[v] ~= '?' and step:find(ix.gate_names[v], 1, true)) then
+            named[#named + 1] = v
+        end
+    end
+    table.sort(lacking) table.sort(named)
+    check('hidden gates: the client gates on 46 records no menu shows', n == 46, n)
+    check('hidden gates: each has the step that sets it (roe/unlocks.lua)', #lacking == 0, table.concat(lacking, ' '))
+    check('hidden gates: no step is the name of its flag', #named == 0, table.concat(named, ' '))
+    local unl = read('roe/unlocks.lua')
+    local extra = {}
+    for v in pairs(unl) do if not hidden[v] then extra[#extra + 1] = v end end
+    check('hidden gates: the table names no record the client does not gate on', #extra == 0, table.concat(extra, ' '))
+    -- A Thousand Cuts (928) waits on Scenarios 15 (4076): its lock line is the step, and a visible record still names itself
+    local why = {kind = 'record', id = 4076, name = ix.gate_names[4076]}
+    local line = Sobj.lock_text(app, why)
+    check('A Thousand Cuts: the lock line is the step, not "Scenarios 15"', line:find('^To unlock: 800 unique objectives')
+          and line:find('Brown Envelope') and not line:find('Scenarios'), line)
+    check('a gate on a record in the menu still names that record', Sobj.lock_text(app, {kind = 'record', id = 1, name = 'First Step Forward'})
+          == 'Unlocked by the record "First Step Forward"')
+    check('a hidden record the table lacks says it is outside Records, never its id', Sobj.lock_text(app, {kind = 'record', id = 4095})
+          == 'Unlocked by a step outside Records of Eminence')
+    Sobj.HIDDEN_STEP = false
+    check('self-test: without the rule the line names the flag (the fail before)', Sobj.lock_text(app, why) == 'Unlocked by the record "Scenarios 15"',
+          Sobj.lock_text(app, why))
+    Sobj.HIDDEN_STEP = true
+    -- the reason is the deepest failing gate: A Thousand Cuts' own (4076), not its list's (4000), with neither completed
+    env.packets(H.fixture_packets(530))
+    local roe = app.roe
+    roe.invalidate()
+    local w = roe.locked(928)
+    check('A Thousand Cuts names its own gate, not the gate of its list', w and w.kind == 'record' and w.id == 4076, w and w.id)
+    roe.SPECIFIC_WHY = false
+    roe.invalidate()
+    local w0 = roe.locked(928)
+    check('self-test: in tree order the gate of its list is named (the fail before)', w0 and w0.id == 4000, w0 and w0.id)
+    roe.SPECIFIC_WHY = true
+    roe.invalidate()
+end
+
 -- the cross-link opens the entry Chronicle already has
 env.packets(H.fixture_packets(530))
 local ci, si = app.roe.locate(1313)

@@ -524,7 +524,9 @@ function S.tooltip(b, ctx, hit, to_win)
         local _, y0 = to_win(hit.x0, hit.y0)
         local _, y1 = to_win(hit.x0, hit.y1)
         local mx = ctx.win.mouse_at and ctx.win.mouse_at.x or to_win(hit.x0, 0)
-        local kind = ctx.app.view.params.cat == 'mission' and 'Mission' or 'Quest'
+        local p = ctx.app.view.params
+        local kind = ctx.app:chain_target(p.cat, p.area, hit.name) == 'record' and 'Record'
+            or p.cat == 'mission' and 'Mission' or 'Quest'
         kit.tooltip(b, mx + 14, y1 + 8, hit.name, {{kind .. '  (opens in Chronicle)', C.quest}}, nil, ctx.w, ctx.h, y0)
     elseif ctx.app.walkthrough_tooltip then
         ctx.app.walkthrough_tooltip(b, ctx, hit, to_win)

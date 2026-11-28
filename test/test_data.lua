@@ -136,6 +136,8 @@ end
 
 local entries, missing = 0, 0
 local pages_index = dofile(V2 .. 'pages/index.lua')
+-- a Records objective's page (record|roe|<id>) has no guide card and no v1 metadata to compare with; test_screens checks those pages
+for k in pairs(pages_index) do if k:find('^record|') then pages_index[k] = nil end end
 local filled_from_pages = 0
 local cleaned = 0
 local repaired = 0

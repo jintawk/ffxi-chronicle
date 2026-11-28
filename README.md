@@ -310,14 +310,18 @@ that adds objectives or a whole category needs no new Chronicle.
 - **The list** inside a sub-category searches, sorts and filters like any other list in Chronicle, and marks a repeatable record with a second square behind its status.
 
 ![The objectives of one sub-category](media/records-list.png)
-- **268 objectives wrap a quest or mission** Chronicle already documents. Those link straight into
+- **271 objectives wrap a quest or mission** Chronicle already documents. Those link straight into
   that entry, with its walkthrough and its step progress.
+- **The RoE quests** (Impermanence, Panta Rhei, Go With the Flow, the Ygnas and Arciela Directives
+  and the rest of Nantoto's and Fremilla's lists) carry their BG-wiki walkthrough under the record's
+  details, with what starts them, what they need and every step.
 
 ![A record you have set, with the server's own count](media/records-objective.png)
 
 ![A record that wraps a quest, with that quest's own step strip](media/records-crosslink.png)
 - **An objective the game is not offering you yet** is still listed, dimmed, saying which record
-  unlocks it. The percentage leaves those out, so it is the figure the game itself would show.
+  unlocks it, or, where the game gates it on one of its own hidden flags, what to do instead ("800 unique
+  objectives, then choose the Brown Envelope from Nantoto in Lower Jeuno"). The percentage leaves those out, so it is the figure the game itself would show.
 
 The one requirement Chronicle cannot read is "have you been to this zone", which no packet carries.
 Those objectives are shown and counted, and the guide names the zone rather than claiming anything.

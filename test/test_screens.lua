@@ -337,15 +337,36 @@ local function chain_faults(cat, area, name)
     return out
 end
 do   -- the self-test: the drawing made to call every name a link (the old behaviour) is caught on a quest whose chain names entries Chronicle lacks
-    app.chain_target = function() return 'quest', 'jeuno' end
-    local faulty = chain_faults('quest', 'jeuno', 'To Kill Mocking Birds')
-    app.chain_target = real_target
-    check('self-test: a chain name with no entry drawn as a link is caught', #faulty >= 1 and faulty[1]:find('finds no entry', 1, true), faulty[1])
-    check('chain: the real drawing has no such fault there', #chain_faults('quest', 'jeuno', 'To Kill Mocking Birds') == 0)
+    -- (To Kill Mocking Birds was that quest until its chain's records got pages of their own; the first such quest is found here instead)
+    local lone
+    for _, area in ipairs({'sandoria', 'bastok', 'windurst', 'jeuno', 'other', 'outlands', 'toau', 'wotg', 'abyssea', 'adoulin', 'coalition'}) do
+        for _, it in ipairs(app.data.get_area_status('quest', area).items) do
+            local e = app:guide_entry({cat = 'quest', area = area, name = it.name, id = it.id})
+            for _, list in ipairs({e and e.previous or {}, e and e.next or {}}) do
+                for _, n in ipairs(list) do if not lone and real_target(app, 'quest', area, n) == nil then lone = {area, it.name} end end
+            end
+        end
+        if lone then break end
+    end
+    check('chain self-test: some quest names a chain entry Chronicle lacks', lone ~= nil)
+    if lone then
+        app.chain_target = function() return 'quest', lone[1] end
+        local faulty = chain_faults('quest', lone[1], lone[2])
+        app.chain_target = real_target
+        check('self-test: a chain name with no entry drawn as a link is caught', #faulty >= 1 and faulty[1]:find('finds no entry', 1, true), faulty[1])
+        check('chain: the real drawing has no such fault there', #chain_faults('quest', lone[1], lone[2]) == 0)
+    end
+    -- a chain name that is a Records objective with a page opens that record (To Kill Mocking Birds -> Golden Rule ... Remembrance)
+    check('chain: the real drawing of To Kill Mocking Birds has no fault', #chain_faults('quest', 'jeuno', 'To Kill Mocking Birds') == 0)
+    local rc, rid = real_target(app, 'quest', 'jeuno', 'Petals of Recollection')
+    check('chain: a name that is a record with a page finds the record', rc == 'record' and rid == 388, tostring(rc) .. ' ' .. tostring(rid))
+    app:entry('quest', 'jeuno', 'To Kill Mocking Birds')
+    check('chain: opening it from the quest goes to the record, and back returns', app:open_chain('quest', 'jeuno', 'Impermanence')
+          and app.view.name == 'robj' and app.view.params.id == 529 and (app:back() or true) and app.view.name == 'guide')
     -- across kinds: a quest's next can be a mission (Apocalypse Nigh -> The Last Verse)
     local c, a = real_target(app, 'quest', 'jeuno', 'The Last Verse')
     check('chain: a quest followed by a mission finds it', c == 'mission' and a ~= nil, tostring(c) .. ' ' .. tostring(a))
-    check('chain: a name nobody has finds nothing', real_target(app, 'quest', 'jeuno', 'Petals of Recollection') == nil)
+    check('chain: a name nobody has finds nothing', real_target(app, 'quest', 'jeuno', 'A Quest Nobody Has Written') == nil)
 end
 -- every page in the index, every way in, every tab (2026-10-17 in game: a page lost when its
 -- entry was reached by name, and tabs that moved the page)
@@ -473,7 +494,48 @@ do
 end
 -- the gate's own test (the gate's self-test): an index entry Chronicle does not list, which no route reaches
 if os.getenv('CR_SUITE_FAULT') == 'unreachable_page' then index['quest|sandoria|76'] = index['quest|sandoria|75'] end
-for key in pairs(index) do
+-- Records objectives with a page of their own (record|roe|<id>, the RoE quests): the record is in the tree, and the record screen
+-- opens its page by every route to it (a jump in, its list row, back from a page it links to)
+local story = {}
+do
+    local P = require('core/pages')
+    local function opened(key) local c = P.current() return c ~= nil and c.key == key and c.doc ~= nil end
+    local nrec = 0
+    for key, file in pairs(index) do
+        local id = tonumber(key:match('^record|roe|(%d+)$'))
+        if not id then story[key] = file
+        else
+            nrec = nrec + 1
+            local ci, si = app.roe.locate(id)
+            check(key .. ': listed in Records', ci ~= nil)
+            if ci then
+                app:roe_objective(id)
+                check(key .. ': a jump to the record opens its page', opened(key))
+                app:roe_sub(ci, si)
+                app:go('robj', {ci = ci, si = si, id = id})
+                check(key .. ': its list row opens its page', opened(key))
+                app:home()
+                check(key .. ': leaving the record closes its page', P.current() == nil)
+            end
+        end
+    end
+    if nrec > 0 then
+        -- the wiki names some records as quests of their own, and the pages link to each other by those names
+        local want = {}
+        for key, file in pairs(index) do
+            local id = tonumber(key:match('^record|roe|(%d+)$'))
+            local t = id and dofile(file)
+            if t then want[t.page] = math.min(want[t.page] or id, id) end
+        end
+        for title, id in pairs(want) do
+            check('record page "' .. title .. '": a link by its wiki title opens record ' .. id, P.record_by_title(title) == id,
+                  tostring(P.record_by_title(title)))
+            check('record page "' .. title .. '": the link matches with spaces for underscores', P.record_by_title(title:gsub('_', ' ')) == id)
+        end
+        check('a title no record page has opens no record (self-test)', P.record_by_title('Smash the Orcish Scouts') == nil)
+    end
+end
+for key in pairs(story) do
     local cat, area, id = key:match('^(%a+)|([%w_]+)|(%d+)$')
     id = tonumber(id)
     local name

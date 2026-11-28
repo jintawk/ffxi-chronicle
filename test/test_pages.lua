@@ -195,6 +195,10 @@ end
 local function page_card(path)
     local cat, area, id = path:match('pages/(%a+)s/([%w_]+)/(%d+)%.lua$')
     if not cat then return {} end
+    if cat == 'record' then         -- a Records page is drawn under the record's details, which are its card (ui/screens/robj.lua)
+        local o = require('core/roe').objective(tonumber(id))
+        return o and require('ui/screens/robj').card(o) or {}
+    end
     return card.shown(entry_of(cat, area, tonumber(id)))
 end
 
@@ -204,6 +208,10 @@ end
 local function page_printed(path)
     local cat, area, id = path:match('pages/(%a+)s/([%w_]+)/(%d+)%.lua$')
     if not cat then return nil end
+    if cat == 'record' then         -- a Records page: what the record's details print (ui/screens/robj.lua S.card)
+        local c = page_card(path)
+        return c.printed and {repeatable = c.printed.repeatable or 'No'} or nil
+    end
     local e = entry_of(cat, area, tonumber(id)) or {}
     local function str(v) return (type(v) == 'string' and v:find('%S')) and v or nil end
     local r, t = e.repeatable, e.title
@@ -302,6 +310,10 @@ local function page_hidden(h, title, shown, printed)
     local raw = t
     t = t:lower():gsub('^%s+', ''):gsub('%s+$', '')
     if plain and (t == '' or t == 'none' or t == '--' or t == 'unknown') then return true end
+    -- rule 209: under a record's details a fame of unknown level says nothing ("Jeuno Fame Level: Unknown"); a known level stays
+    if h.key == 'Required Fame' and shown and shown.record and plain and nn(raw):find('famelevelunknown$') then return true end
+    -- and the repeat flag above the page is the client's: the wiki's Repeatable row is not drawn under a record, whatever it says
+    if h.key == 'Repeatable' and shown and shown.record then return true end
     -- the very text the card prints (REPEATABLE: No for an entry with no value), however the card got it
     if plain and h.key == 'Repeatable' and printed and norm_words(raw) == norm_words(printed.repeatable) then return true end
     -- a Title is the card's when it has the same letters; one that differs (a list the card cuts to its first) is drawn
@@ -413,7 +425,10 @@ local function card_contradictions(path, doc, drawn_card)
         if D.head_hidden(h, doc.title, drawn_card) and not D.head_empty(h) then
             local t, plain = field_text(h)
             local card_says
-            if h.key == 'Repeatable' then
+            if h.key == 'Repeatable' and cat == 'record' then
+                -- rule 209: under a record the repeat flag is the game client's own, and the wiki's row gives way to it even where it
+                -- differs (A Thousand Cuts repeats; the wiki says "No")
+            elseif h.key == 'Repeatable' then
                 local printed = (page_printed(path) or {}).repeatable or 'No'
                 if not plain or norm_words(t) ~= norm_words(printed) then card_says = printed end
             elseif h.key == 'Title' and e.title then

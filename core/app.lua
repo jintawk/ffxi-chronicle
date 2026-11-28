@@ -384,6 +384,11 @@ function App:chain_target(cat, area, name)
     local other = cat == 'mission' and 'quest' or 'mission'
     a = find(other)
     if a then return other, a end
+    -- a Records objective with a page of its own, by the page's wiki title: To Kill Mocking Birds (quest jeuno 178) leads on to Golden
+    -- Rule, Impermanence and nine more, which the game keeps as records, not quests -> 'record', the record's id
+    local P = package.loaded['core/pages']
+    local rid = self.roe and P and P.record_by_title and P.record_by_title(name)
+    if rid then return 'record', rid end
 end
 
 -- a chain link: the entry holding that name, then open it
@@ -391,6 +396,7 @@ end
 function App:open_chain(cat, area, name)
     local c, a = self:chain_target(cat, area, name)
     if not a then return false end
+    if c == 'record' then return self:roe_objective(a, self.win and self.win.scroll or 0, self.view.name == 'guide') end
     if self.view.name == 'guide' then
         self:go('guide', {cat = c, area = a, name = name}, self.win and self.win.scroll or 0)
     else

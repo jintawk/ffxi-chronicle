@@ -522,6 +522,18 @@ function D.head_hidden(h, title, card)
         return s == title
     end
     if D.head_empty(h) then return true end
+    -- Rule 209 (Records pages, record|roe|<id>): BG-wiki files the RoE quests under a nation and writes "Jeuno Fame Level: Unknown";
+    -- a record has no fame, so a row of unknown level says nothing there. A known level stays (the Ygnas Directive's "Adoulin Fame
+    -- Level: 9"). The repeat flag above the page is the client's own (ui/screens/robj.lua), so the wiki's Repeatable row is never
+    -- drawn under it: A Thousand Cuts repeats in the game and the wiki says "No". Only a record screen's card asks for this (S.card),
+    -- so no quest or mission page changes.
+    if card and card.record then
+        if h.key == 'Repeatable' then return true end
+        if h.key == 'Required Fame' then
+            local t = plain_text(h)
+            if t and t:find('famelevelunknown$') then return true end
+        end
+    end
     if repeats_card(h, card) then return true end
     -- a field with the very text the card prints (Repeatable: No, where the card says 'No' for want of a value)
     local field = D.CARD_PRINTED[h.key]

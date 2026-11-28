@@ -223,13 +223,21 @@ def chronicle_entries(root):
 QUOTE = re.compile(r'[“"]([^”"]{3,70})[”"]')
 
 
-def resolve(desc, entries):
+# Records the game also keeps as quests of their own, under another name, which no description quotes: Nantoto's first three RoE
+# quests are the Jeuno quests BG-wiki and Chronicle call Teleports by Twilight, Shifty Shades of Prey and To Kill Mocking Birds
+# (Chronicle's quest jeuno 176 to 178, each with its walkthrough page). The record links to that entry, as a quoted name would.
+SAME_AS = {386: 'Teleports by Twilight', 387: 'Shifty Shades of Prey', 527: 'To Kill Mocking Birds'}
+
+
+def resolve(desc, entries, oid=None):
     """The Chronicle entry a description names in quotes, or None.
 
     Punctuation inside the quotes is already normalised away. A name that differs from
     Chronicle's only by a trailing plural s ("Smash the Orcish Scout" against Chronicle's
     "Smash the Orcish Scouts") is matched as a last resort.
     """
+    if oid in SAME_AS and norm(SAME_AS[oid]) in entries:
+        return entries[norm(SAME_AS[oid])]
     for q in QUOTE.findall(desc):
         k = norm(q)
         if not k:
@@ -385,7 +393,7 @@ def main():
 
         for s in subs:
             for oid, _, r in s['objs']:
-                w = resolve(r['desc'], entries)
+                w = resolve(r['desc'], entries, oid)
                 wrap = ''
                 if w:
                     linked += 1
