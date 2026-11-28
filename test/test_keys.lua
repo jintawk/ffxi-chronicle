@@ -245,7 +245,7 @@ do
     local settings = require('ui/screens/settings')
     local row
     for _, r in ipairs(settings.rows(app2)) do if r.key == 'nav' then row = r end end
-    check('KEYS-E: a Settings row', row and row.label == 'Keyboard' and row.value == 'On', row and row.value)
+    check('KEYS-E: a Settings row', row and row.label == 'Use the keyboard' and row.value == 'On', row and row.value)
 end
 
 ---------------------------------------------------------------------------------------------------------------------------
@@ -417,7 +417,7 @@ do
     local function row()
         for _, r in ipairs(settings.rows(app)) do if r.key == 'nav_key' then return r end end
     end
-    check('KEY-3: a Settings row names the key', row() and row().label == 'Keyboard key' and row().value == 'K',
+    check('KEY-3: a Settings row names the key', row() and row().label == 'Keys that open Chronicle' and row().value == 'K',
         row() and row().value)
     app.prefs.change('nav_key')
     env.frame()

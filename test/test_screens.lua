@@ -850,7 +850,19 @@ check('place restored', win.x == px and win.y == py and win.w == pw, win.x .. ',
 -- settings screen
 local sx, sy = chrome_hit('settings')
 click(sx, sy)
-check('settings view', app.view.name == 'settings' and N.layers[2].text:find('Show uncompletable') ~= nil)
+check('settings view', app.view.name == 'settings' and N.layers[2].text:find('Quests you can no longer do', 1, true) ~= nil)
+do  -- the four sections, in order, each drawn as a heading, every row in one of them
+    local ss = require('ui/screens/settings')
+    local secs, titles = ss.sections(app), {}
+    for _, s in ipairs(secs) do titles[#titles + 1] = s.title end
+    check('settings sections', table.concat(titles, '|') == 'General|Window|Controller|Keyboard', table.concat(titles, '|'))
+    local drawn = true
+    for _, t in ipairs(titles) do drawn = drawn and N.layers[2].text:find(t, 1, true) ~= nil end
+    check('settings section headings drawn', drawn)
+    local n = 0
+    for _, r in ipairs(ss.rows(app)) do if r.section then n = n + 1 end end
+    check('settings: every row in a section', n == #ss.rows(app) and n == 11, n)
+end
 local function setting(key_name) return content_hit(function(h) return h.id == 'set' and h.key == key_name end) end
 x, y = setting('show_uncompletable')
 click(x, y)

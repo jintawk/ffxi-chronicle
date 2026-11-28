@@ -286,9 +286,14 @@ function W:flush()
                 if self.S.tooltip then self.S.tooltip(b, self:ctx(), self.hover, function(x, y) return self:to_win(x, y) end) end
             end
             if self.S.sticky then self.S.sticky(b, self:ctx()) end
+            -- the sticky path-tab bar covers the top of the content: the cursor is drawn below it and kept clear of it
+            self.sticky_y1 = nil
+            for _, h in ipairs(b.hits) do
+                if h.id == 'sticky_bar' and (not self.sticky_y1 or h.y1 > self.sticky_y1) then self.sticky_y1 = h.y1 end
+            end
             kit.grip(b, self.w, self.h, self.resize ~= nil, self.hover and self.hover.resize ~= nil)
             if self.pad_mode and self.pad_hint then
-                b:text(20, self.h - 18, kit.C.faint, ops.fit(self.pad_hint, self.w - 64))
+                b:text(20, self.h - 18, kit.C.faint, W.fit_hint(self.pad_hint, self.w - 64))
             end
         end
         if self.pad_mode and self.cursor then self:pad_draw(b) end
@@ -685,6 +690,28 @@ W.PAD_STEP = 1 / 3          -- that step, in viewports
 
 local function vh_of(self) return self.vp and (self.vp.y1 - self.vp.y0) or 0 end
 
+-- how far the sticky path-tab bar reaches into the viewport (content px hidden under it), 0 without one
+local function top_inset(self)
+    if not (self.sticky_y1 and self.vp) then return 0 end
+    return math.max(0, math.min(self.sticky_y1 - self.vp.y0, vh_of(self)))
+end
+W.top_inset = top_inset
+
+-- The hint line at a width: its parts are separated by two spaces ("A Open  B Back  LB RB Section  LT RT Page  L3+R3 Done").
+-- Too wide, it drops parts from the second-last backwards, so the first (Open) and the last (how to give the input back) stay;
+-- only when those two alone do not fit is the text cut.
+function W.fit_hint(s, width)
+    if ops.text_w(s) <= width then return s end
+    local parts = {}
+    for p in (s .. '  '):gmatch('(.-)  ') do if p ~= '' then parts[#parts + 1] = p end end
+    while #parts > 2 do
+        table.remove(parts, #parts - 1)
+        local t = table.concat(parts, '  ')
+        if ops.text_w(t) <= width then return t end
+    end
+    return ops.fit(table.concat(parts, '  '), width)
+end
+
 -- the first head target in reading order (the lit tab row comes before the controls on its right)
 local function first_head(T)
     local best
@@ -724,7 +751,7 @@ function W:pad_refind()
     local c = nav.find(T, self.cursor_key)
     if not c and self.cursor_pick then
         local vh = vh_of(self)
-        c = (self.vp and nav.first_in(T, self.scroll, self.scroll + vh)) or first_head(T)
+        c = (self.vp and nav.first_in(T, self.scroll + top_inset(self), self.scroll + vh)) or first_head(T)
     elseif not c and self.cursor and self.cursor_at then
         c = nav.nearest(T, self.cursor_zone, self.cursor_at.x, self.cursor_at.y)
     end
@@ -788,8 +815,9 @@ function W:pad_reveal(c)
     if not (c and c.zone == 'body' and self.vp) then return end
     local vh = vh_of(self)
     local m = math.min(W.PAD_MARGIN, math.floor(vh / 4))
-    if c.y0 < self.scroll + m then
-        self:scroll_to(c.y0 - m)
+    local mt = m + top_inset(self)                 -- below the sticky path-tab bar, not under it
+    if c.y0 < self.scroll + mt then
+        self:scroll_to(c.y0 - mt)
     elseif c.y1 > self.scroll + vh - m then
         self:scroll_to(math.min(c.y0 - m, c.y1 - vh + m))
     end
@@ -812,7 +840,7 @@ function W:pad_follow()
     -- parked, with nothing in view at the last look and the view not past it: nothing can have come into view yet
     if not h and self.parked_at and math.abs(self.scroll - self.parked_at) < 16 then return end
     local T = nav.targets(self)
-    local c = nav.first_in(T, self.scroll, self.scroll + vh)
+    local c = nav.first_in(T, self.scroll + top_inset(self), self.scroll + vh)
     self.parked_at = (not c) and self.scroll or nil
     self:pad_set(c)
 end
@@ -941,14 +969,28 @@ function W:pad_draw(b)
     local col = kit.C.press_edge
     if h.content and self.vp and self.content_b then
         local vp = self.vp
-        b:clip(vp.x0 - 4, vp.y0, vp.x1 + 4, vp.y1)
+        b:clip(vp.x0 - 4, vp.y0 + top_inset(self), vp.x1 + 4, vp.y1)
         if h.span then
+            -- one link is a hit per word: one frame per line it covers, round the words on that line
+            local lines = {}
             for _, r in ipairs(self.content_b.hits) do
                 if r.span == h.span then
-                    local x0, y0 = self:to_win(r.x0, r.y0)
-                    local x1, y1 = self:to_win(r.x1, r.y1)
-                    kit.frame(b, x0 - 2, y0 - 1, x1 + 2, y1 + 1, col)
+                    local l
+                    for _, q in ipairs(lines) do
+                        if r.y0 < q.y1 and r.y1 > q.y0 then l = q break end
+                    end
+                    if l then
+                        l.x0, l.x1 = math.min(l.x0, r.x0), math.max(l.x1, r.x1)
+                        l.y0, l.y1 = math.min(l.y0, r.y0), math.max(l.y1, r.y1)
+                    else
+                        lines[#lines + 1] = {x0 = r.x0, y0 = r.y0, x1 = r.x1, y1 = r.y1}
+                    end
                 end
+            end
+            for _, r in ipairs(lines) do
+                local x0, y0 = self:to_win(r.x0, r.y0)
+                local x1, y1 = self:to_win(r.x1, r.y1)
+                kit.frame(b, x0 - 2, y0 - 1, x1 + 2, y1 + 1, col)
             end
         else
             local x0, y0 = self:to_win(h.x0, h.y0)

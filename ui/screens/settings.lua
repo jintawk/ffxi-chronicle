@@ -1,6 +1,7 @@
 --[[
     Chronicle, Settings: what v1 set only by commands, in one place. Each row is a label and a
-    button that changes it; everything is saved at once.
+    button that changes it; everything is saved at once. The rows come in four sections (General,
+    Window, Controller, Keyboard), each under its own heading.
 ]]
 
 local kit = require('ui/kit')
@@ -11,24 +12,43 @@ local S = {}
 local C = kit.C
 
 local ROW = 34
+local HEAD = 30                 -- a section heading: its title and the rule under it
 
--- the rows: label, current value text, what a click does (app.prefs holds the actions)
-local function rows(app)
+-- the sections and their rows: label, current value text, what a click does (app.prefs holds the actions)
+local function sections(app)
     local s, pr = app.settings, app.prefs
-    local wt = pr.wintype()
+    local on = function(v) return v and 'On' or 'Off' end
     return {
-        {key = 'visible_on_load', label = 'Show on load', value = s.visible_on_load and 'On' or 'Off'},
-        {key = 'show_uncompletable', label = 'Show uncompletable', value = s.show_uncompletable and 'On' or 'Off'},
-        {key = 'size', label = 'Size', value = string.format('%.1f', s.size or 1), steps = true},
-        {key = 'scale', label = 'Scale', value = pr.scale_name()},
-        {key = 'wintype', label = 'Window type', value = wt},
-        {key = 'pad', label = 'Controller', value = s.pad ~= false and 'On' or 'Off'},
-        {key = 'pad_chord', label = 'Controller buttons', value = pr.pad_chord and pr.pad_chord() or 'L3+R3'},
-        {key = 'nav', label = 'Keyboard', value = s.nav ~= false and 'On' or 'Off'},
-        {key = 'nav_key', label = 'Keyboard key', value = pr.nav_key and pr.nav_key() or 'Ctrl+K'},
-        {key = 'auto_hide', label = 'Hide on Back', value = s.auto_hide == true and 'On' or 'Off'},
-        {key = 'reset', label = 'Place and size', value = 'Reset'},
+        {title = 'General', rows = {
+            {key = 'visible_on_load', label = 'Open when you log in', value = on(s.visible_on_load)},
+            {key = 'show_uncompletable', label = 'Quests you can no longer do', value = s.show_uncompletable and 'Shown' or 'Hidden'},
+            {key = 'auto_hide', label = 'Back on a section\'s home', value = s.auto_hide == true and 'Closes window' or 'Releases input'},
+        }},
+        {title = 'Window', rows = {
+            {key = 'size', label = 'Size', value = string.format('%.1f', s.size or 1), steps = true},
+            {key = 'scale', label = 'Scale', value = pr.scale_name()},
+            {key = 'wintype', label = 'Window style', value = pr.wintype()},
+            {key = 'reset', label = 'Position and size', value = 'Reset'},
+        }},
+        {title = 'Controller', rows = {
+            {key = 'pad', label = 'Use a controller', value = on(s.pad ~= false)},
+            {key = 'pad_chord', label = 'Buttons that open Chronicle', value = pr.pad_chord and pr.pad_chord() or 'L3+R3'},
+        }},
+        {title = 'Keyboard', rows = {
+            {key = 'nav', label = 'Use the keyboard', value = on(s.nav ~= false)},
+            {key = 'nav_key', label = 'Keys that open Chronicle', value = pr.nav_key and pr.nav_key() or 'Ctrl+K'},
+        }},
     }
+end
+S.sections = sections
+
+-- every row in screen order, with its section's title (the tests and the Settings commands read this)
+local function rows(app)
+    local out = {}
+    for _, sec in ipairs(sections(app)) do
+        for _, r in ipairs(sec.rows) do r.section = sec.title out[#out + 1] = r end
+    end
+    return out
 end
 S.rows = rows
 
@@ -44,20 +64,28 @@ function S.content(b, ctx)
     local app = ctx.app
     local w = ctx.vw
     local y = 0
-    for n, r in ipairs(rows(app)) do
-        if n % 2 == 0 then b:rect(0, y, w, y + ROW - 2, C.stripe) end
-        b:text(10, y + 8, C.bold, r.label)
-        local bw = math.max(90, kit.button_w(r.value, 10))
-        local x = w - 10 - bw
-        if r.steps then
-            x = x - 30
-            kit.button(b, x - 30, y + 5, 26, 22, '-', {}, {id = 'set', key = r.key, step = -1})
-            kit.button(b, x, y + 5, bw, 22, r.value, {dim = true}, {id = 'noop'})
-            kit.button(b, x + bw + 4, y + 5, 26, 22, '+', {}, {id = 'set', key = r.key, step = 1})
-        else
-            kit.button(b, x, y + 5, bw, 22, r.value, {}, {id = 'set', key = r.key})
+    for si, sec in ipairs(sections(app)) do
+        if si > 1 then y = y + 10 end
+        b:title(10, y + 4, 11, C.gold, sec.title)
+        b:rect(10, y + HEAD - 6, w - 10, y + HEAD - 5, C.rule)
+        y = y + HEAD
+        for n, r in ipairs(sec.rows) do
+            if n % 2 == 0 then b:rect(0, y, w, y + ROW - 2, C.stripe) end
+            local bw = math.max(90, kit.button_w(r.value, 10))
+            local x = w - 10 - bw
+            if r.steps then x = x - 30 end
+            -- the label gives way to the button at a narrow window, never the other way round
+            local lx1 = (r.steps and x - 34 or x) - 8
+            b:text(10, y + 8, C.bold, ops.fit(r.label, lx1 - 10))
+            if r.steps then
+                kit.button(b, x - 30, y + 5, 26, 22, '-', {}, {id = 'set', key = r.key, step = -1})
+                kit.button(b, x, y + 5, bw, 22, r.value, {dim = true}, {id = 'noop'})
+                kit.button(b, x + bw + 4, y + 5, 26, 22, '+', {}, {id = 'set', key = r.key, step = 1})
+            else
+                kit.button(b, x, y + 5, bw, 22, r.value, {}, {id = 'set', key = r.key})
+            end
+            y = y + ROW
         end
-        y = y + ROW
     end
     y = y + 12
     b:text(10, y, C.faint, 'Right-click: back.  //' .. (app.short or 'cr') .. ' help: commands.')

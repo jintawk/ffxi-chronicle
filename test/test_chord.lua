@@ -179,8 +179,8 @@ do
     env.cmd('pad', 'status')
     check('CHORD-7: status names the chord', chat_has(env, 'ready (LB+RB)'))
     app:go('settings', {}, 0)
-    check('CHORD-7: the Settings row is "Controller"', row(app, 'pad') and row(app, 'pad').label == 'Controller')
-    check('CHORD-7: and "Controller buttons" names the chord', row(app, 'pad_chord').label == 'Controller buttons'
+    check('CHORD-7: the Settings row is "Use a controller"', row(app, 'pad') and row(app, 'pad').label == 'Use a controller')
+    check('CHORD-7: and "Buttons that open Chronicle" names the chord', row(app, 'pad_chord').label == 'Buttons that open Chronicle'
         and row(app, 'pad_chord').value == 'LB+RB', row(app, 'pad_chord').value)
     -- changed while held: the hint follows at once
     chord(env, B.lb, B.rb)

@@ -274,7 +274,7 @@ app.on_hide = hide
 ---------------------------------------------------------------------------
 local padc = {dec = pad.new(), joined = false, held = false, retry_at = 0, why = nil, prev = 0, acts = {}, frac = 0,
               said = false, conflicts = {}, wait = nil}
-local PAD_WAIT_S = 5            -- the Settings row "Controller buttons" waits this long for a press, then keeps the old chord
+local PAD_WAIT_S = 5            -- the Settings row "Buttons that open Chronicle" waits this long for a press, then keeps the old chord
 
 -- The chord (settings.pad_chord), parsed again whenever the setting changes (a login reads the next character's). A name that
 -- does not parse falls back to L3 + R3. A new chord goes to the decoder, to the conflict check and, once joined, to the hook.
@@ -1152,7 +1152,7 @@ windower.register_event('addon command', function(...)
         elseif a then say('autohide [on | off]', 167) return
         else settings.auto_hide = not settings.auto_hide end
         save()
-        say('hide on Back ' .. (settings.auto_hide and 'on' or 'off'))
+        say('Back on a section\'s home: ' .. (settings.auto_hide and 'closes the window' or 'releases the input'))
         if win and win.visible and app.view.name == 'settings' then win:invalidate('all') win:flush() end
     elseif cmd == 'q' or cmd == 'quests' then
         if a then data.print_area('quest', a) else data.print_type_summary('quest') end

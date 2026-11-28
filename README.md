@@ -138,7 +138,7 @@ On a long walkthrough, the D-pad goes from link to link. Where there is a long s
 click, it scrolls by a third of a page instead, so you can read the whole page with it. Going back puts the
 cursor on the card or row you came from.
 
-To close the window with Cancel, set "Hide on Back" to On on the Settings screen, or use `//cr autohide on`. Cancel
+To close the window with Cancel, set "Back on a section's home" to Closes window (Settings, General), or use `//cr autohide on`. Cancel
 on a section's home then hides the window. Chronicle gives back the controller, and the keys too if it has them. The
 Cancel you pressed stays away from the game until you let go of it. L3 + R3 shows the window again and takes the
 controller.
@@ -159,7 +159,7 @@ behind the game's back, so turn it off for FFXI.
 `//cr pad` does what L3 + R3 does, so it can be bound to a key with Windower's `bind`. `//cr pad off` stops
 Chronicle reading the controller at all, and the Settings screen has the same switch.
 
-L3 + R3 is the default chord. To use two other buttons, click "Controller buttons" on the Settings screen, or
+L3 + R3 is the default chord. To use two other buttons, click "Buttons that open Chronicle" on the Settings screen (Controller), or
 move the cursor to it and press Confirm. Then hold the two buttons you want together. Chronicle holds the
 controller while it waits, so the game sees none of these presses.
 
@@ -214,13 +214,13 @@ Chronicle holds the controller and the keyboard separately, and they move the sa
 the arrow keys, and Ctrl+K does not take the controller. The line at the bottom of the window names the
 keys of whichever one you used last.
 
-With "Hide on Back" on, Backspace or Escape on a section's home hides the window. Chronicle gives back the keys,
+With "Back on a section's home" set to Closes window, Backspace or Escape on a section's home hides the window. Chronicle gives back the keys,
 and the controller too if it has it. That Backspace or Escape stays away from the game until you let go of it.
 Ctrl+K shows the window again and takes the keys. Ctrl+K and `//cr nav` never hide the window.
 
 Chronicle gives the keys back when you hide the window or log out. It also gives them back when you unload it or
 switch to another window. If the keyboard ever seems stuck, switch to another window and back.
-Ctrl+K is the default nav key. To use another key, click "Keyboard key" on the Settings screen and press the key you
+Ctrl+K is the default nav key. To use another key, click "Keys that open Chronicle" on the Settings screen (Keyboard) and press the key you
 want, with Ctrl, Alt or Shift if you like. Escape keeps the old key. Think twice before choosing a letter on its
 own: the game binds many of them (W, A, S, D, I, J, K, L and others), and Chronicle keeps its nav key from the
 game.
@@ -246,7 +246,7 @@ Ctrl+K no longer takes the keys, and the Settings screen has the same switch.
 | `//cr home` | Back to the home screen |
 | `//cr records` | Open the Records of Eminence tab |
 | `//cr autoshow` | Show on load, on or off |
-| `//cr autohide [on \| off]` | Hide on Back: Cancel, Backspace or Escape on a section's home hides the window |
+| `//cr autohide [on \| off]` | Back on a section's home closes the window: Cancel, Backspace or Escape there hides it |
 | `//cr size [+ \| - \| 0.5-3 \| reset]` | Window size |
 | `//cr scale one \| ui \| sim <w> <h> \| auto \| off` | Draw scale: 1:1, the game's UI size, or a simulated screen |
 | `//cr wintype auto \| 1-8` | Follow the game's window style, or pin one |

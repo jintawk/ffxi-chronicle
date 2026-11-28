@@ -90,25 +90,26 @@ do
     local env, win, app = shown()
     check('HIDE-1: off by default', app.settings.auto_hide == false, tostring(app.settings.auto_hide))
     local r = row(app, 'auto_hide')
-    check('HIDE-1: a Settings row "Hide on Back", Off', r and r.label == 'Hide on Back' and r.value == 'Off', r and r.value)
+    check('HIDE-1: a Settings row "Back on a section\'s home": Releases input', r and r.label == 'Back on a section\'s home'
+        and r.value == 'Releases input', r and r.value)
     local order = {}
     for i, x in ipairs(settings_screen.rows(app)) do order[x.key] = i end
-    check('HIDE-1: the row follows "Keyboard key", before "Place and size"', order.auto_hide == order.nav_key + 1
-        and order.reset == order.auto_hide + 1)
+    check('HIDE-1: the row is in General, after the uncompletable quests', r.section == 'General'
+        and order.auto_hide == order.show_uncompletable + 1)
     local saves = env.saves
     app.prefs.change('auto_hide')
     check('HIDE-1: the row turns it on, and saves', app.settings.auto_hide == true and env.saves > saves
-        and row(app, 'auto_hide').value == 'On')
+        and row(app, 'auto_hide').value == 'Closes window')
     check('HIDE-1: turning it on does not hide the window', win.visible)
     app.prefs.change('auto_hide')
-    check('HIDE-1: and off again', app.settings.auto_hide == false and row(app, 'auto_hide').value == 'Off')
+    check('HIDE-1: and off again', app.settings.auto_hide == false and row(app, 'auto_hide').value == 'Releases input')
     -- drawn on the Settings screen
     app:go('settings', {}, 0)
     env.frame()
-    check('HIDE-1: the Settings screen draws the row', env.N.layers[2].text:find('Hide on Back', 1, true) ~= nil)
+    check('HIDE-1: the Settings screen draws the row', env.N.layers[2].text:find('Back on a section\'s home', 1, true) ~= nil)
     -- saved per character: a saved value is read
     local env2 = shown({settings = {visible_on_load = false, auto_hide = true}})
-    check('HIDE-1: a saved On is read', env2.app.settings.auto_hide == true and row(env2.app, 'auto_hide').value == 'On')
+    check('HIDE-1: a saved On is read', env2.app.settings.auto_hide == true and row(env2.app, 'auto_hide').value == 'Closes window')
 end
 
 ---------------------------------------------------------------------------------------------------------------------------
@@ -377,9 +378,9 @@ do
     local saves = env.saves
     env.cmd('autohide')
     check('HIDE-11: //cr autohide turns it on, and saves', app.settings.auto_hide == true and env.saves > saves
-        and chat_has(env, 'hide on Back on'))
+        and chat_has(env, 'home: closes the window'))
     env.cmd('autohide')
-    check('HIDE-11: again turns it off', app.settings.auto_hide == false and chat_has(env, 'hide on Back off'))
+    check('HIDE-11: again turns it off', app.settings.auto_hide == false and chat_has(env, 'home: releases the input'))
     env.cmd('autohide', 'on')
     check('HIDE-11: //cr autohide on', app.settings.auto_hide == true)
     env.cmd('autohide', 'on')
@@ -401,7 +402,7 @@ do
     env.frame()
     local sent = env.N.sent[2]
     env.cmd('autohide', 'on')
-    check('HIDE-11: the Settings screen follows the command', env.N.sent[2] > sent and row(app, 'auto_hide').value == 'On',
+    check('HIDE-11: the Settings screen follows the command', env.N.sent[2] > sent and row(app, 'auto_hide').value == 'Closes window',
         tostring(env.N.sent[2]) .. ' ' .. tostring(sent))
     local h = #env.chat
     env.cmd('help')

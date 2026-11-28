@@ -403,6 +403,47 @@ do
     windower.has_focus = nil
 end
 
+-- in-game findings 2026-11-28 (f1-f3): the hint line at the narrowest window, one frame per link, the frame below the sticky bar
+do
+    local env = shown()
+    local W, ops = require('ui/window'), require('ui/ops')
+    local hint = 'A Open  B Back  LB RB Section  LT RT Page  L3+R3 Done'
+    local narrow = ops.text_w('A Open  B Back  L3+R3 Done') + 2
+    local t = W.fit_hint(hint, narrow)
+    check('f1: a narrow window keeps how to give the pad back', t:find('L3+R3 Done', 1, true) ~= nil and t:find('A Open', 1, true) == 1, t)
+    check('f1: and drops the middle parts first', not t:find('Page', 1, true) and not t:find('Section', 1, true), t)
+    check('f1: a wide window keeps it all', W.fit_hint(hint, 2000) == hint)
+    check('f1: never wider than asked', ops.text_w(W.fit_hint(hint, 60)) <= 60)
+
+    -- a link of three words is three hits with one span: one frame round all three, not three frames
+    local function frames(hits, cur, sticky)
+        local win = setmetatable({cursor = cur, vp = {x0 = 10, y0 = 50, x1 = 510, y1 = 550}, scroll = 0,
+            content_b = {hits = hits}, sticky_y1 = sticky}, {__index = W})
+        function win:to_win(x, y) return x + self.vp.x0, y + self.vp.y0 - self.scroll end
+        local b = ops.new()
+        win:pad_draw(b)
+        local n, clip_top = 0, nil
+        for line in (b:text_out() .. '\n'):gmatch('(.-)\n') do
+            if line:sub(1, 2) == 'R\t' then n = n + 1 end
+            if line:sub(1, 2) == 'C\t' then clip_top = tonumber(line:match('^C\t[^\t]+\t([^\t]+)')) end
+        end
+        return n / 4, clip_top
+    end
+    local words = {
+        {id = 'link', span = 7, content = true, x0 = 100, y0 = 20, x1 = 140, y1 = 36},
+        {id = 'link', span = 7, content = true, x0 = 146, y0 = 20, x1 = 190, y1 = 36},
+        {id = 'link', span = 7, content = true, x0 = 196, y0 = 20, x1 = 240, y1 = 36},
+    }
+    check('f3: a three-word link is one frame', frames(words, words[1]) == 1, frames(words, words[1]))
+    local wrapped = {words[1], words[2], {id = 'link', span = 7, content = true, x0 = 0, y0 = 40, x1 = 44, y1 = 56}}
+    check('f3: a link wrapped over two lines is one frame a line', frames(wrapped, wrapped[1]) == 2, frames(wrapped, wrapped[1]))
+    local _, top = frames(words, words[1], 50 + 29)
+    check('f2: under the sticky path-tab bar the frame is clipped at its bottom edge', top == 50 + 29, top)
+    local _, top0 = frames(words, words[1], nil)
+    check('f2: without one, at the viewport', top0 == 50, top0)
+    check('f2: the inset is what the bar hides', W.top_inset(setmetatable({sticky_y1 = 79, vp = {y0 = 50, y1 = 550}}, {__index = W})) == 29)
+end
+
 restore()
 print(('test_pad: %d passed, %d failed'):format(pass, fail))
 os.exit(fail == 0 and 0 or 1)
