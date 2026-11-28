@@ -649,9 +649,10 @@ local function restyled()
 end
 
 windower.register_event('prerender', function()
+    -- the keyboard block first: an error further on must never keep the game's keyboard blocked
+    if kbd.block or kbd.held or (win and win.focus) then kbd_block(os.clock()) end
     pad_tick(os.clock())
     kbd_tick(os.clock())
-    if kbd.block or kbd.held or (win and win.focus) then kbd_block(os.clock()) end
     if not win then
         if retry.at and os.clock() >= retry.at then
             retry.at = nil
