@@ -753,7 +753,6 @@ local function kbd_status_lines()
     if kbd.hook == true and type(st) == 'table' then
         say(('keyboard %s (%s) | keys kept by nui\'s key hook: %s%s'):format(kbd.held and 'held' or 'ready', nk.label,
             tostring(st.describe), (st.device and st.device ~= '') and (' | device ' .. st.device) or ''))
-        say('keyboard: the search box and the Keyboard key row block the whole keyboard (keyboard_blockinput)')
     else
         say(('keyboard %s (%s) | keys kept by keyboard_blockinput (the whole keyboard) | why: %s'):format(
             kbd.held and 'held' or 'ready', nk.label, tostring(kbd.hook_why or 'the key hook is not joined yet')))

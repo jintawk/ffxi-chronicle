@@ -547,6 +547,8 @@ do
     env.cmd('status')
     said = table.concat(env.chat, '\n', lines + 1)
     check('HOOK-16: //cr status has the keyboard line', said:find("keys kept by nui's key hook", 1, true) ~= nil)
+    check('HOOK-18: with the hook joined, the status does not say the whole keyboard is blocked',
+        said:find('whole keyboard', 1, true) == nil and said:find('keyboard_blockinput', 1, true) == nil, said)
     -- lose focus empties the list at once; unload leaves the hook
     tap(env, K)
     env.fire('lose focus')
