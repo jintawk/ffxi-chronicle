@@ -28,8 +28,9 @@ local shifted = {
     [0x29] = '~', [0x2B] = '|',
 }
 
--- each Shift key on its own: releasing one while the other is held keeps Shift (review UI-7)
-local held = {[0x2A] = false, [0x36] = false}
+-- each Shift key on its own: releasing one while the other is held keeps Shift (review UI-7); Ctrl and Alt the same way, for the
+-- keyboard driver (a key with Ctrl or Alt held is the game's)
+local held = {[0x2A] = false, [0x36] = false, [0x1D] = false, [0x9D] = false, [0x38] = false, [0xB8] = false}
 
 -- -> the character for this key press, or nil
 function keys.char(dik, down)
@@ -42,6 +43,10 @@ function keys.char(dik, down)
 end
 
 -- the game window lost or gained focus: a Shift released elsewhere never sent its key-up
-function keys.reset() held[0x2A], held[0x36] = false, false end
+function keys.reset() for k in pairs(held) do held[k] = false end end
+
+-- -> Shift held, Ctrl or Alt held (as the last keyboard events said)
+function keys.shift() return held[0x2A] or held[0x36] end
+function keys.ctrl_alt() return held[0x1D] or held[0x9D] or held[0x38] or held[0xB8] end
 
 return keys

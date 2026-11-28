@@ -157,7 +157,8 @@ function H.load(opts)
         open_url = function(u) env.urls[#env.urls + 1] = u end,
         ffxi = {
             get_player = function() return {name = opts.player or 'Berrant'} end,
-            get_info = function() return {logged_in = opts.logged_in ~= false, zone = opts.zone or 0} end,
+            -- env.chat_open: the game's chat line is open (the keyboard driver takes no press then)
+            get_info = function() return {logged_in = opts.logged_in ~= false, zone = opts.zone or 0, chat_open = env.chat_open == true} end,
             get_items = function(bag) return (opts.items or {})[bag] or {} end,
             get_key_items = function() return opts.key_items or {} end,
         },

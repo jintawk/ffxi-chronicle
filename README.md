@@ -151,6 +151,36 @@ behind the game's back, so turn it off for FFXI.
 `//cr pad` does what L3 + R3 does, so it can be bound to a key with Windower's `bind`. `//cr pad off` stops
 Chronicle reading the controller at all, and the Settings screen has the same switch.
 
+## With a keyboard
+
+Press **K** to drive Chronicle's cursor from the keyboard. Press K again to give the keys back to the game. This
+also works for a pad that Steam Input, DS4Windows or reWASD maps to keys.
+
+| Key | What it does |
+|---|---|
+| Arrow keys | Move the cursor: cards, rows, buttons, links, path tabs |
+| Enter | Open what the cursor is on |
+| Backspace or Escape | Back. On a section's home, it gives the keys back to the game |
+| Tab / Shift + Tab | The next or previous section: Missions, Quests, Records |
+| Page Up / Page Down | A page up or down |
+| Home / End | The top or the bottom of the page |
+
+While Chronicle has the keys, the game does not get these keys. Every other key still goes to the game. K takes
+nothing while the chat line is open, so you can still type a K in chat. A key with Ctrl or Alt held also goes to
+the game. While the search box has focus, it gets every key first, as it does with the mouse.
+
+The keys follow the same rules as the controller. A key you were already holding when you pressed K still belongs
+to the game until you let go of it. A key you pressed while Chronicle had the keys stays away from the game until
+you let go of it, even if you give the keys back first.
+
+Chronicle holds the controller and the keyboard separately, and they move the same cursor. L3 + R3 does not take
+the arrow keys, and K does not take the controller. The line at the bottom of the window names the
+keys of whichever one you used last.
+
+Chronicle gives the keys back when you hide the window, log out, unload it, or switch to another window.
+`//cr nav` does what K does, so you can bind it to another key with Windower's `bind`. With `//cr nav off`, K no
+longer takes the keys, and the Settings screen has the same switch.
+
 ## Commands
 
 | Command | What it does |
@@ -168,6 +198,7 @@ Chronicle reading the controller at all, and the Settings screen has the same sw
 | `//cr wintype auto \| 1-8` | Follow the game's window style, or pin one |
 | `//cr uncompletable` | Show quests that can no longer be done |
 | `//cr pad [on \| off \| status]` | Take or give back the controller (as L3 + R3), turn it on or off, or say why it is not working |
+| `//cr nav [on \| off]` | Take or give back the keyboard's arrow keys (as K), or turn K on or off |
 | `//cr q [area]` / `m [area]` | Summaries in the chat log |
 | `//cr status` | Drawing, memory and hook details |
 | `//cr progress` / `unknown` / `debug` / `help` | Diagnostics and help |

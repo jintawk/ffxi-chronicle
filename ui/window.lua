@@ -315,7 +315,7 @@ function W:hide()
     self.hover, self.pressed, self.drag, self.resize, self.focus = nil, nil, nil, nil, nil
     self.want_scroll, self.want_x, self.want_y, self.pending, self.content_wait = nil, nil, nil, nil, nil
     self.picture, self.thumb_drag, self.down = nil, nil, {}     -- the popup layer is cleared below (review UI-5)
-    self.pad_mode, self.cursor = false, nil
+    self.pad_mode, self.cursor, self.pad_held, self.holders = false, nil, false, nil
     for id = L_CHROME, L_POPUP do forget(self, id) end
 end
 
@@ -750,14 +750,30 @@ function W:pad_to_mouse()
     self.dirty.chrome, self.dirty.overlay = true, true
 end
 
--- the pad is Chronicle's (hint: the button line) / given back
-function W:pad_enter(hint)
+-- an input is Chronicle's (who: 'pad' or 'keys'; hint: its line of keys) / given back. The pad and the keyboard are held on
+-- their own and share the one cursor: it goes only when neither holds it
+function W:pad_enter(hint, who)
+    self.holders = self.holders or {}
+    self.holders[who or 'pad'] = true
     self.pad_held, self.pad_hint = true, hint or self.pad_hint
     self.pad_mode = false
     self:pad_wake()
     self:flush()
 end
-function W:pad_leave()
+-- the hint line follows the input that acted last
+function W:pad_hint_for(hint)
+    if hint and hint ~= self.pad_hint then
+        self.pad_hint = hint
+        self.dirty.overlay = true
+    end
+end
+function W:pad_leave(who, other_hint)
+    local hs = self.holders or {}
+    hs[who or 'pad'] = nil
+    if next(hs) then                      -- the other input still holds the cursor: its hint again
+        self:pad_hint_for(other_hint)
+        return self:flush()
+    end
     self.pad_held = false
     if self.pad_mode then
         self.pad_mode = false

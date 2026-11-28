@@ -97,6 +97,7 @@ local defaults = {
     show_uncompletable = false,
     share_textures = true,  -- false: keep this addon's own textures (start 'noshare'), not the shared cache
     pad = true,             -- the controller: L3 + R3 takes it (nui's pad hook, XInput only); false never hooks it
+    nav = true,             -- the keyboard: K takes the arrows, Enter, Backspace, Escape, Tab, PgUp/PgDn, Home/End; false never takes a key
 }
 -- A settings.xml the stock config library cannot parse (half written by another client) makes config.load throw, and the addon
 -- would not load (review LIFE-6): the defaults are used instead, the file is left alone and nothing is saved until a load works
@@ -245,10 +246,11 @@ local function show()
     if not start() then return end
     win:show()
 end
-local pad_give                  -- the controller goes back to the game with the window (below)
+local pad_give, kbd_give        -- the controller and the keyboard go back to the game with the window (below)
 local function hide()
     retry.show = false
     if pad_give then pad_give() end
+    if kbd_give then kbd_give() end
     if win then win:hide() end
 end
 local function toggle()
@@ -298,11 +300,12 @@ local function pad_join(now)
     return false
 end
 
+local kbd_hint                  -- the keyboard's line of keys (below): the hint again when the pad goes and the keys stay
 pad_give = function()
     if not padc.held then return end
     padc.held = false
     if nui.N and nui.N.pad_capture then nui.N.pad_capture(false) end
-    if win then win:pad_leave() end
+    if win then win:pad_leave('pad', kbd_hint()) end
 end
 
 local function pad_take(buttons)
@@ -314,7 +317,7 @@ local function pad_take(buttons)
     padc.dec:latch(buttons)               -- the chord's own buttons (and anything else held) act only once released
     padc.dec.prev = buttons or 0
     padc.frac = 0
-    win:pad_enter(pad_hint())
+    win:pad_enter(pad_hint(), 'pad')
     if not padc.said then
         padc.said = true
         say('controller: L3+R3 gives it back to the game')
@@ -330,15 +333,18 @@ local function pad_off()
     padc.joined, padc.retry_at = false, 0
 end
 
+-- An action of the cursor, from either input. give: what gives that input back (Cancel at the root, the toggle); hint: its
+-- line of keys, which the hint line shows while it is the input that acts
 local TAB_STEP = {tab_prev = -1, tab_next = 1}
 local MOVES = {up = true, down = true, left = true, right = true}
-local function pad_act(a)
-    if a == 'toggle' then pad_give() return end
+local function nav_act(a, give, hint)
+    if a == 'toggle' then give() return end
     if not (win and win.visible) then return end
+    win:pad_hint_for(hint)
     if MOVES[a] then win:pad_move(a)
     elseif a == 'confirm' then win:pad_activate()
     elseif a == 'cancel' then
-        if win:pad_back() == 'root' then pad_give() end      -- nothing to go back to: the pad goes back to the game
+        if win:pad_back() == 'root' then give() end          -- nothing to go back to: the input goes back to the game
     elseif TAB_STEP[a] then
         local common = require('ui/screens/common')
         local i = (common.tab_index(app) - 1 + TAB_STEP[a]) % #common.CATS + 1
@@ -348,7 +354,8 @@ local function pad_act(a)
     elseif a == 'page_up' or a == 'page_down' then
         local vh = win.vp and (win.vp.y1 - win.vp.y0) or 0
         win:pad_scroll((a == 'page_up' and -1 or 1) * math.max(36, vh - 36))
-    elseif a == 'top' then win:pad_scroll(0, true) end
+    elseif a == 'top' then win:pad_scroll(0, true)
+    elseif a == 'bottom' then win:pad_scroll(win.content_h or 0, true) end
 end
 
 -- prerender: one read of the pad (numbers, no table); nothing else unless something changed. Not holding the pad, only the
@@ -374,7 +381,7 @@ local function pad_tick(now)
     padc.prev = buttons
     local acts, scroll = padc.dec:feed(now, buttons, lt, rt, lx, ly, rx, ry, padc.acts)
     for i = 1, #acts do
-        pad_act(acts[i])
+        nav_act(acts[i], pad_give, pad_hint())
         if not padc.held then break end
     end
     if padc.held and scroll ~= 0 and win then
@@ -407,6 +414,87 @@ local function pad_status_lines()
     say(('game pad config: %s | XInput %s | Confirm %s, Cancel %s%s'):format(padc.cfg and padc.cfg.key or 'not found',
         padc.xinput == nil and '?' or (padc.xinput and 'on' or 'off'), ok, back,
         #padc.conflicts > 0 and ' | L3/R3 also mapped in the game' or ''))
+end
+
+---------------------------------------------------------------------------
+-- The keyboard: K takes the keys below from the game and drives the same cursor as the controller; K again gives them back.
+-- The pad and the keyboard are held on their own (one cursor, two holds). The rules for a press, as for the search box (review
+-- UI-4) and the pad:
+--   - a key whose press the game saw stays the game's until its release, also when K takes the keys meanwhile (kbd.game)
+--   - a key Chronicle took stays Chronicle's until its release, also when the keys go back meanwhile (kbd.took)
+--   - the focused search box comes first; while the chat line is open, and with Ctrl or Alt held, no new press is taken
+-- A held arrow repeats on Chronicle's own clock (the pad's delay and rate), whether or not Windower repeats the key-down.
+---------------------------------------------------------------------------
+local KEY_K = 0x25
+local KEY_ACT = {
+    [0xC8] = 'up', [0xD0] = 'down', [0xCB] = 'left', [0xCD] = 'right',
+    [0x1C] = 'confirm', [0x9C] = 'confirm',              -- Enter, the number pad's Enter
+    [0x0E] = 'cancel', [0x01] = 'cancel',                -- Backspace, Escape
+    [0x0F] = 'tab_next',                                 -- Tab (Shift + Tab: tab_prev)
+    [0xC9] = 'page_up', [0xD1] = 'page_down', [0xC7] = 'top', [0xCF] = 'bottom',
+}
+local kbd = {held = false, took = {}, game = {}, dir = nil, dir_key = nil, next_at = 0}
+local KBD_HINT = 'Enter Open  Bksp Back  Tab Section  PgUp PgDn Page  K Done'
+kbd_hint = function() return kbd.held and KBD_HINT or nil end
+
+local function chat_open()
+    local info = windower.ffxi.get_info()
+    return info and info.chat_open == true
+end
+
+kbd_give = function()
+    kbd.dir, kbd.dir_key = nil, nil
+    if not kbd.held then return end
+    kbd.held = false
+    if win then win:pad_leave('keys', padc.held and pad_hint() or nil) end
+end
+
+local function kbd_take()
+    if kbd.held then return end
+    if not (win and win.visible) then show() end
+    if not (win and win.visible) then return end
+    kbd.held = true
+    win:pad_enter(KBD_HINT, 'keys')
+end
+
+local function kbd_act(a, now)
+    if a == 'tab_next' and keys.shift() then a = 'tab_prev' end
+    if MOVES[a] then kbd.dir, kbd.next_at = a, now + pad.REPEAT_DELAY end
+    nav_act(a, kbd_give, KBD_HINT)
+end
+
+-- a key-down nobody before took -> true: Chronicle keeps it
+local function kbd_down(dik, now)
+    if kbd.took[dik] then return true end                -- held (Windower repeating it): the arrow repeats on our clock
+    if kbd.game[dik] then return false end               -- the game saw this press: its repeats are the game's too
+    if settings.nav == false or keys.ctrl_alt() or chat_open() then return false end
+    if dik == KEY_K then
+        if kbd.held then kbd_give() else kbd_take() end
+        if not kbd.held and not (win and win.visible) then return false end   -- no window to take the keys to: the game's K
+        kbd.took[dik] = true
+        return true
+    end
+    local a = KEY_ACT[dik]
+    if not (a and kbd.held and win and win.visible and nui.drawing) then return false end
+    kbd.took[dik] = true
+    if MOVES[a] then kbd.dir_key = dik end
+    kbd_act(a, now)
+    return true
+end
+
+-- prerender: a held arrow repeats (nothing to do while no arrow is held)
+local function kbd_tick(now)
+    if not kbd.dir then return end
+    if not (kbd.held and kbd.took[kbd.dir_key]) then kbd.dir, kbd.dir_key = nil, nil return end
+    if now >= kbd.next_at then
+        kbd.next_at = now + pad.REPEAT_EVERY
+        nav_act(kbd.dir, kbd_give, KBD_HINT)
+    end
+end
+
+-- the game window lost or gained focus: a key released elsewhere never sent its key-up
+local function kbd_reset()
+    kbd.took, kbd.game, kbd.dir, kbd.dir_key = {}, {}, nil, nil
 end
 
 -- textures: area emblems and the trophy, loaded once and kept (64 px: 16 KB each)
@@ -457,6 +545,9 @@ app.prefs = {
         elseif key == 'pad' then
             settings.pad = settings.pad == false
             if settings.pad == false then pad_off() end
+        elseif key == 'nav' then
+            settings.nav = settings.nav == false
+            if settings.nav == false then kbd_give() end
         elseif key == 'reset' then
             win.x, win.y, win.w, win.h = 200, 150, 620, 760
             place_window()
@@ -479,15 +570,27 @@ windower.register_event('mouse', function(t, x, y, delta, blocked)
     if win:mouse(t, x * m, y * m, delta, blocked) then return true end
 end)
 
+-- The search box first (review UI-4), then the keyboard driver. A release is swallowed when its press was: by the box, or by the
+-- driver (each clears its own record of the press, whoever swallows it)
 windower.register_event('keyboard', function(dik, down, flags, blocked)
     local ch = keys.char(dik, down)
-    if win and (nui.drawing or not down) and win:key(dik, down, ch) then return true end
+    if not down then
+        local mine = kbd.took[dik]
+        kbd.took[dik], kbd.game[dik] = nil, nil
+        if win and win:key(dik, down, ch) then return true end
+        if mine then return true end
+        return
+    end
+    if kbd.took[dik] then return true end                -- the driver's press, held: never the box's or the game's
+    if win and nui.drawing and win:key(dik, down, ch) then return true end
+    if kbd_down(dik, os.clock()) then return true end
+    kbd.game[dik] = true
 end)
 
--- a Shift released while the game had no focus never sent its key-up (review UI-7); the controller goes back to the game, which
--- (with "gamepad works when inactive") would otherwise lose it to a window nobody is looking at
-windower.register_event('lose focus', function() keys.reset() pad_give() end)
-windower.register_event('gain focus', keys.reset)
+-- a Shift released while the game had no focus never sent its key-up (review UI-7); the controller and the keyboard go back to
+-- the game, which (with "gamepad works when inactive") would otherwise lose the pad to a window nobody is looking at
+windower.register_event('lose focus', function() keys.reset() kbd_reset() pad_give() kbd_give() end)
+windower.register_event('gain focus', function() keys.reset() kbd_reset() end)
 
 -- the restyle after a change of the game's window type (made once, not a closure every pass)
 local function restyled()
@@ -498,6 +601,7 @@ end
 
 windower.register_event('prerender', function()
     pad_tick(os.clock())
+    kbd_tick(os.clock())
     if not win then
         if retry.at and os.clock() >= retry.at then
             retry.at = nil
@@ -630,6 +734,7 @@ end)
 -- The saves are guarded so one failing does not skip the others.
 windower.register_event('unload', function()
     if nui.N then pcall(nui.stop) end
+    kbd_give()
     pcall(progress.flush)
     pcall(save_place)
     pcall(pages.close)
@@ -694,6 +799,7 @@ local HELP = {
     '  //%s wintype auto | 1-8',
     '  //%s uncompletable   toggle uncompletable quests',
     '  //%s pad [on | off | status]   take the controller (L3+R3 does too)',
+    '  //%s nav [on | off]   take the keyboard\'s arrows (K does too)',
     '  //%s q [area] | m [area]   summaries in chat',
     '  //%s progress [log | debug]   quest step progress',
     '  //%s unknown | debug | status | help',
@@ -810,6 +916,19 @@ windower.register_event('addon command', function(...)
         else
             local _, b = nui.N.pad()
             pad_take(b or 0)
+        end
+    elseif cmd == 'nav' or cmd == 'keys' then
+        if a == 'on' or a == 'off' then
+            settings.nav = a == 'on'
+            save()
+            if a == 'off' then kbd_give() end
+            say('keyboard ' .. a .. (a == 'on' and ' (K takes the arrows)' or ''))
+        elseif settings.nav == false then
+            say('keyboard off (//' .. ident.short .. ' nav on)', 167)
+        elseif kbd.held then
+            kbd_give()
+        else
+            kbd_take()
         end
     elseif cmd == 'debug' then data.toggle_debug()
     elseif cmd == 'unknown' then data.print_unknown_ids()

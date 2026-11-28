@@ -23,6 +23,7 @@ local function rows(app)
         {key = 'scale', label = 'Scale', value = pr.scale_name()},
         {key = 'wintype', label = 'Window type', value = wt},
         {key = 'pad', label = 'Controller (L3+R3)', value = s.pad ~= false and 'On' or 'Off'},
+        {key = 'nav', label = 'Keyboard (K)', value = s.nav ~= false and 'On' or 'Off'},
         {key = 'reset', label = 'Place and size', value = 'Reset'},
     }
 end
