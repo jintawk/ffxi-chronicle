@@ -100,6 +100,7 @@ local defaults = {
     pad_chord = 'l3+r3',    -- that chord: two buttons, a name for ui/pad.lua's pad.parse_chord ('l3+r3', 'lb+rb', 'back+start')
     nav = true,             -- the keyboard: the nav key takes the arrows, Enter, Backspace, Escape, Tab, PgUp/PgDn, Home/End; false never takes a key
     nav_key = 'k',          -- that key: a name for ui/keys.lua's keys.parse ('k', 'ctrl+n', 'f10')
+    auto_hide = false,      -- Cancel at a root view (pad or keyboard) hides the window, and so gives back both inputs
 }
 -- A settings.xml the stock config library cannot parse (half written by another client) makes config.load throw, and the addon
 -- would not load (review LIFE-6): the defaults are used instead, the file is left alone and nothing is saved until a load works
@@ -354,7 +355,9 @@ local function pad_off()
 end
 
 -- An action of the cursor, from either input. give: what gives that input back (Cancel at the root, the toggle); hint: its
--- line of keys, which the hint line shows while it is the input that acts
+-- line of keys, which the hint line shows while it is the input that acts. With settings.auto_hide, Cancel at the root hides
+-- the window instead: hide() gives back the pad and the keys alike, and the press rules hold as for give (the hook keeps the
+-- pad's Cancel hidden until its release, and the keyboard block waits for the key's release)
 local TAB_STEP = {tab_prev = -1, tab_next = 1}
 local MOVES = {up = true, down = true, left = true, right = true}
 local function nav_act(a, give, hint)
@@ -364,7 +367,9 @@ local function nav_act(a, give, hint)
     if MOVES[a] then win:pad_move(a)
     elseif a == 'confirm' then win:pad_activate()
     elseif a == 'cancel' then
-        if win:pad_back() == 'root' then give() end          -- nothing to go back to: the input goes back to the game
+        if win:pad_back() == 'root' then                     -- nothing to go back to: the input goes back to the game
+            if settings.auto_hide == true then hide() else give() end
+        end
     elseif TAB_STEP[a] then
         local common = require('ui/screens/common')
         local i = (common.tab_index(app) - 1 + TAB_STEP[a]) % #common.CATS + 1
@@ -712,7 +717,7 @@ app.prefs = {
         return ({one = 'One', ui = 'Game UI'})[m] or m
     end,
     change = function(key, step)
-        if key == 'visible_on_load' or key == 'show_uncompletable' then
+        if key == 'visible_on_load' or key == 'show_uncompletable' or key == 'auto_hide' then
             settings[key] = not settings[key]
             if key == 'show_uncompletable' then data.set_show_uncompletable(settings[key]) end
         elseif key == 'size' then
@@ -997,6 +1002,7 @@ local HELP = {
     '  //%s home         back to Home',
     '  //%s records      the Records of Eminence tab',
     '  //%s autoshow     toggle showing on load',
+    '  //%s autohide [on | off]   Back at a section\'s home hides the window',
     '  //%s size [+|-|n|reset]   the window size (0.5 - 3.0)',
     '  //%s scale one | ui | sim <w> <h> | auto | off',
     '  //%s wintype auto | 1-8',
@@ -1031,6 +1037,13 @@ windower.register_event('addon command', function(...)
         settings.visible_on_load = not settings.visible_on_load
         save()
         say('show on load ' .. (settings.visible_on_load and 'on' or 'off'))
+    elseif cmd == 'autohide' then
+        if a == 'on' or a == 'off' then settings.auto_hide = a == 'on'
+        elseif a then say('autohide [on | off]', 167) return
+        else settings.auto_hide = not settings.auto_hide end
+        save()
+        say('hide on Back ' .. (settings.auto_hide and 'on' or 'off'))
+        if win and win.visible and app.view.name == 'settings' then win:invalidate('all') win:flush() end
     elseif cmd == 'q' or cmd == 'quests' then
         if a then data.print_area('quest', a) else data.print_type_summary('quest') end
     elseif cmd == 'm' or cmd == 'missions' then

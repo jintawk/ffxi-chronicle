@@ -31,7 +31,7 @@ jobs:
       - name: The suites that need no game installation
         run: |
           failed=
-          for t in test_doc test_input test_keys test_mission_words test_steps test_roe test_complete_strip test_progress_ui test_progress_lists test_pages test_chord; do
+          for t in test_doc test_input test_keys test_mission_words test_steps test_roe test_complete_strip test_progress_ui test_progress_lists test_pages test_chord test_autohide; do
             echo "== $t"
             lua5.1 "test/$t.lua" || failed="$failed $t"
           done

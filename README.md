@@ -122,7 +122,7 @@ the other one. A quick tap of one still reaches the game.
 |---|---|
 | D-pad or left stick | Move the cursor: cards, rows, buttons, links, path tabs |
 | Confirm (A) | Open what the cursor is on |
-| Cancel (B) | Back. On a section's home, it gives the controller back to the game |
+| Cancel (B) | Back. On a section's home, it gives the controller back to the game, or hides the window (see below) |
 | LB / RB | The previous or next section: Missions, Quests, Records |
 | LT / RT | A page up or down |
 | Right stick | Scroll |
@@ -137,6 +137,14 @@ is too. A line at the bottom of the window names them while Chronicle has the co
 On a long walkthrough, the D-pad goes from link to link. Where there is a long stretch of text with nothing to
 click, it scrolls by a third of a page instead, so you can read the whole page with it. Going back puts the
 cursor on the card or row you came from.
+
+To close the window with Cancel, set "Hide on Back" to On on the Settings screen, or use `//cr autohide on`. Cancel
+on a section's home then hides the window. Chronicle gives back the controller, and the keys too if it has them. The
+Cancel you pressed stays away from the game until you let go of it. L3 + R3 shows the window again and takes the
+controller.
+
+Cancel that goes back a screen, closes a picture or leaves the search box does not hide the window. L3 + R3 and
+`//cr pad` never hide it. The setting is off by default.
 
 A button you were already holding when you pressed L3 + R3 still belongs to the game until you let go of it. A
 button you pressed while Chronicle had the controller stays away from the game until you let go of it, even if you
@@ -178,7 +186,7 @@ also works for a pad that Steam Input, DS4Windows or reWASD maps to keys.
 |---|---|
 | Arrow keys | Move the cursor: cards, rows, buttons, links, path tabs |
 | Enter | Open what the cursor is on |
-| Backspace or Escape | Back. On a section's home, it gives the keys back to the game |
+| Backspace or Escape | Back. On a section's home, it gives the keys back to the game, or hides the window (see below) |
 | Tab / Shift + Tab | The next or previous section: Missions, Quests, Records |
 | Page Up / Page Down | A page up or down |
 | Home / End | The top or the bottom of the page |
@@ -199,6 +207,10 @@ as released.
 Chronicle holds the controller and the keyboard separately, and they move the same cursor. L3 + R3 does not take
 the arrow keys, and K does not take the controller. The line at the bottom of the window names the
 keys of whichever one you used last.
+
+With "Hide on Back" on, Backspace or Escape on a section's home hides the window. Chronicle gives back the keys,
+and the controller too if it has it. The keyboard stays blocked until you let go of the key, so the game never sees
+it. K shows the window again and takes the keys. K and `//cr nav` never hide the window.
 
 Chronicle gives the keys back when you hide the window, log out, unload it, or switch to another window. If the
 keyboard ever seems stuck, switch to another window and back.
@@ -226,6 +238,7 @@ keys, and the Settings screen has the same switch.
 | `//cr home` | Back to the home screen |
 | `//cr records` | Open the Records of Eminence tab |
 | `//cr autoshow` | Show on load, on or off |
+| `//cr autohide [on \| off]` | Hide on Back: Cancel, Backspace or Escape on a section's home hides the window |
 | `//cr size [+ \| - \| 0.5-3 \| reset]` | Window size |
 | `//cr scale one \| ui \| sim <w> <h> \| auto \| off` | Draw scale: 1:1, the game's UI size, or a simulated screen |
 | `//cr wintype auto \| 1-8` | Follow the game's window style, or pin one |
