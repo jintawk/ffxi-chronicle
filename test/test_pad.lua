@@ -388,6 +388,21 @@ do
     check('swap: A goes back', app.view.name == 'home')
 end
 
+-- six clients: with the game's "gamepad works when inactive" the chord reaches every client, and only the one in front takes it
+do
+    local env, win = shown()
+    local N = env.N
+    env.cmd('hide')
+    env.frame()
+    windower.has_focus = function() return false end
+    take(env)
+    check('focus: a client behind does not take the pad', not N.pad_holding and not win.visible)
+    windower.has_focus = function() return true end
+    take(env)
+    check('focus: the client in front does, and shows the window', N.pad_holding and win.visible and win.pad_mode)
+    windower.has_focus = nil
+end
+
 restore()
 print(('test_pad: %d passed, %d failed'):format(pass, fail))
 os.exit(fail == 0 and 0 or 1)

@@ -407,7 +407,10 @@ local function pad_tick(now)
         return
     end
     if not padc.held then
-        if pad.band(buttons, C) == C and pad.band(padc.prev, C) ~= C then pad_take(buttons) end
+        -- only the game window in front takes the pad: with the game's "gamepad works when inactive", the same chord reaches
+        -- every client, and a client behind would open and hold it unseen (lose focus gives it back, but nothing took it there)
+        local hf = windower.has_focus
+        if pad.band(buttons, C) == C and pad.band(padc.prev, C) ~= C and not (hf and hf() == false) then pad_take(buttons) end
         padc.prev = buttons
         return
     end
