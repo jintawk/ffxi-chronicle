@@ -99,7 +99,9 @@ local defaults = {
     pad = true,             -- the controller: the chord takes it (nui's pad hook, XInput only); false never hooks it
     pad_chord = 'l3+r3',    -- that chord: two buttons, a name for ui/pad.lua's pad.parse_chord ('l3+r3', 'lb+rb', 'back+start')
     nav = true,             -- the keyboard: the nav key takes the arrows, Enter, Backspace, Escape, Tab, PgUp/PgDn, Home/End; false never takes a key
-    nav_key = 'k',          -- that key: a name for ui/keys.lua's keys.parse ('k', 'ctrl+n', 'f10')
+    nav_key = 'ctrl+k',     -- that key: a name for ui/keys.lua's keys.parse ('ctrl+k', 'ctrl+n', 'f10'). Not a bare letter by
+                            -- default: the game binds many (W S A D I K J L ... in its first key set), and the nav key is
+                            -- kept from the game whenever its modifiers match
     auto_hide = false,      -- Cancel at a root view (pad or keyboard) hides the window, and so gives back both inputs
 }
 -- A settings.xml the stock config library cannot parse (half written by another client) makes config.load throw, and the addon
@@ -521,7 +523,8 @@ pad_wait_tick = function(now, buttons, holding)
 end
 
 ---------------------------------------------------------------------------
--- The keyboard: K takes the keys below and drives the same cursor as the controller; K again gives them back. The pad and
+-- The keyboard: the nav key (Ctrl+K unless the player chose another) takes the keys below and drives the same cursor as the
+-- controller; the nav key again gives them back. The pad and
 -- the keyboard are held on their own (one cursor, two holds). A held arrow repeats on Chronicle's own clock (the pad's delay
 -- and rate), whether or not Windower repeats the key-down.
 --
@@ -563,11 +566,11 @@ local BLOCK_WAIT_OFF = 2        -- a key still down after this (its release lost
 local KBD_HINT
 
 -- The nav key (settings.nav_key), parsed again whenever the setting changes (a login reads the next character's). A name that
--- does not parse falls back to K.
+-- does not parse falls back to Ctrl+K.
 local function kbd_key()
-    local want = settings.nav_key or 'k'
+    local want = settings.nav_key or 'ctrl+k'
     if kbd.key and kbd.key_src == want then return kbd.key end
-    kbd.key, kbd.key_src = keys.parse(want) or keys.parse('k'), want
+    kbd.key, kbd.key_src = keys.parse(want) or keys.parse('ctrl+k'), want
     KBD_HINT = 'Enter Open  Bksp Back  Tab Section  PgUp PgDn Page  ' .. kbd.key.label .. ' Done'
     return kbd.key
 end
@@ -1113,7 +1116,7 @@ local HELP = {
     '  //%s uncompletable   toggle uncompletable quests',
     '  //%s pad [on | off | status]   take the controller (L3+R3, or your chord, does too)',
     '  //%s pad chord [name]   the two buttons that take it: l3+r3, lb+rb, back+start ...',
-    '  //%s nav [on | off | status | key <name>]   take the keyboard\'s arrows (the nav key, K, does too)',
+    '  //%s nav [on | off | status | key <name>]   take the keyboard\'s arrows (the nav key, Ctrl+K, does too)',
     '  //%s q [area] | m [area]   summaries in chat',
     '  //%s progress [log | debug]   quest step progress',
     '  //%s unknown | debug | status | help',

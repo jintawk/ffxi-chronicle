@@ -30,6 +30,8 @@ local LSHIFT, LCTRL, W_KEY = 0x2A, 0x1D, 0x11
 local function shown(opts)
     opts = opts or {}
     opts.settings = opts.settings or {visible_on_load = false}
+    -- these checks drive a bare nav key; the shipped default is Ctrl+K (test_keys KEY-D)
+    if opts.settings.nav_key == nil then opts.settings.nav_key = 'k' end
     local env = H.load(opts)
     env.cmd('show')
     env.packets(H.fixture_packets(530))
@@ -444,7 +446,8 @@ do
     check('KEY-4: a changed setting is read at the next key', tap(env, F9) and win.pad_mode)
     tap(env, F9)
     app.settings.nav_key = 'nonsense'
-    check('KEY-4: a setting that is no key falls back to K', tap(env, K) and win.pad_mode)
+    check('KEY-4: a setting that is no key falls back to Ctrl+K, not a bare K',
+        not tap(env, K) and not win.pad_mode and chord(env, LCTRL, K) and win.pad_mode)
 end
 
 ---------------------------------------------------------------------------------------------------------------------------
@@ -601,6 +604,32 @@ do
     check('HOOK-17: not before the retry time', env.N.key_starts == 1)
     env.frame(1)
     check('HOOK-17: joined after it', env.N.key_joined and env.N.key_starts == 2 and env.N.key_hidden[K])
+end
+
+-- the shipped nav key is Ctrl+K: the game binds a bare K (its first key set: W S A D I K J L ...), and the nav key is kept from
+-- the game whenever its modifiers match, window shown or not. So with the defaults a bare K must stay the game's.
+do
+    local env = H.load({fake = {key = true}, settings = {visible_on_load = false}})
+    env.cmd('show')
+    env.packets(H.fixture_packets(530))
+    env.frame()
+    local win, app = env.win(), env.app
+    check('KEY-D: the shipped nav key is Ctrl+K', app.settings.nav_key == 'ctrl+k', app.settings.nav_key)
+    env.frame()
+    check('KEY-D: a bare K is not hidden from the game', env.N.key_joined and not env.N.key_hidden[K])
+    check('KEY-D: a bare K is the game\'s, and takes nothing', not tap(env, K) and not win.pad_mode)
+    key(env, LCTRL, true)
+    env.frame()
+    check('KEY-D: K is hidden only while Ctrl is held', env.N.key_hidden[K] == true)
+    key(env, LCTRL, false)
+    env.frame()
+    check('KEY-D: and not once Ctrl is up', not env.N.key_hidden[K])
+    check('KEY-D: Ctrl + K takes the keys', chord(env, LCTRL, K) and win.pad_mode)
+    check('KEY-D: the hint line names Ctrl+K', env.N.layers[3].text:find('Ctrl+K Done', 1, true) ~= nil)
+    check('KEY-D: Ctrl + K again gives them back', chord(env, LCTRL, K) and not win.pad_mode)
+    env.cmd('hide')
+    env.frame()
+    check('KEY-D: hidden window: Ctrl + K shows it and takes the keys', chord(env, LCTRL, K) and win.visible and win.pad_mode)
 end
 
 restore()

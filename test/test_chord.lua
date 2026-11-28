@@ -28,6 +28,8 @@ local ESC = 0x01
 local function shown(opts)
     opts = opts or {}
     opts.settings = opts.settings or {visible_on_load = false}
+    -- these checks drive a bare nav key; the shipped default is Ctrl+K (test_keys KEY-D)
+    if opts.settings.nav_key == nil then opts.settings.nav_key = 'k' end
     local env = H.load(opts)
     env.cmd('show')
     env.packets(H.fixture_packets(530))
