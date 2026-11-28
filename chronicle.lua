@@ -55,6 +55,7 @@ local App = require('core/app')
 local places = require('core/places')
 local ops = require('ui/ops')
 local keys = require('ui/keys')
+local pad = require('ui/pad')
 local Window = require('ui/window')
 local screens = {
     home = require('ui/screens/home'),
@@ -95,6 +96,7 @@ local defaults = {
     active_tab = 'mission',
     show_uncompletable = false,
     share_textures = true,  -- false: keep this addon's own textures (start 'noshare'), not the shared cache
+    pad = true,             -- the controller: L3 + R3 takes it (nui's pad hook, XInput only); false never hooks it
 }
 -- A settings.xml the stock config library cannot parse (half written by another client) makes config.load throw, and the addon
 -- would not load (review LIFE-6): the defaults are used instead, the file is left alone and nothing is saved until a load works
@@ -171,10 +173,10 @@ local function place_window()
     end
 end
 
-local function show_screen(scroll)
+local function show_screen(scroll, cursor)
     if not win then return end
     pages.close()                       -- first: it keeps the scroll the page is left at
-    win:set_screen(screens[app.view.name] or screens.home, scroll)
+    win:set_screen(screens[app.view.name] or screens.home, scroll, cursor)
     if app.view.name == 'guide' and pages.open(app.view.params) then
         win:flush()
         local y = pages.saved_scroll()
@@ -243,14 +245,150 @@ local function show()
     if not start() then return end
     win:show()
 end
+local pad_give                  -- the controller goes back to the game with the window (below)
 local function hide()
     retry.show = false
+    if pad_give then pad_give() end
     if win then win:hide() end
 end
 local function toggle()
     if win and win.visible then hide() else show() end
 end
 app.on_hide = hide
+
+---------------------------------------------------------------------------
+-- The controller: nui's pad hook (the pad the game reads; while Chronicle holds it, new presses, the sticks and the
+-- triggers are kept from the game). L3 + R3 takes it and gives it back; so does //cr pad.
+---------------------------------------------------------------------------
+local padc = {dec = pad.new(), joined = false, held = false, retry_at = 0, why = nil, prev = 0, acts = {}, frac = 0,
+              said = false, conflicts = {}}
+
+local function pad_hint()
+    local ok, back = padc.dec:labels()
+    return ok .. ' Open  ' .. back .. ' Back  LB RB Section  LT RT Page  L3+R3 Done'
+end
+
+-- the game's own Confirm and Cancel, and whether it also uses L3 or R3
+local function pad_read_config()
+    local cfg = nui.N and nui.N.pad_config and nui.N.pad_config() or nil
+    padc.cfg = cfg
+    padc.dec.confirm, padc.dec.cancel, padc.xinput = pad.from_config(cfg)
+    padc.conflicts = pad.chord_conflicts(cfg)
+end
+
+-- join the hook; while xinput1_3.dll is not loaded it is tried again every few seconds, quietly
+local function pad_join(now)
+    if padc.joined then return true end
+    if not (nui.N and nui.N.pad_start) then padc.why = '_chronicle.dll has no controller support' return false end
+    local ok, msg, retry_ms = nui.N.pad_start()
+    if ok then
+        padc.joined, padc.why = true, nil
+        pad_read_config()
+        return true
+    end
+    padc.why = msg
+    padc.retry_at = retry_ms and (now + retry_ms / 1000) or math.huge
+    return false
+end
+
+pad_give = function()
+    if not padc.held then return end
+    padc.held = false
+    if nui.N and nui.N.pad_capture then nui.N.pad_capture(false) end
+    if win then win:pad_leave() end
+end
+
+local function pad_take(buttons)
+    if padc.held or not padc.joined then return end
+    if not (win and win.visible) then show() end
+    if not (win and win.visible) then return end
+    nui.N.pad_capture(true)
+    padc.held = true
+    padc.dec:latch(buttons)               -- the chord's own buttons (and anything else held) act only once released
+    padc.dec.prev = buttons or 0
+    padc.frac = 0
+    win:pad_enter(pad_hint())
+    if not padc.said then
+        padc.said = true
+        say('controller: L3+R3 gives it back to the game')
+        if #padc.conflicts > 0 then say('your FFXI pad config also uses L3 or R3: pressing both does that too', 167) end
+    end
+end
+
+local function pad_off()
+    pad_give()
+    if nui.N and nui.N.pad_stop then nui.N.pad_stop() end
+    padc.joined, padc.retry_at = false, 0
+end
+
+local TAB_STEP = {tab_prev = -1, tab_next = 1}
+local MOVES = {up = true, down = true, left = true, right = true}
+local function pad_act(a)
+    if a == 'toggle' then pad_give() return end
+    if not (win and win.visible) then return end
+    if MOVES[a] then win:pad_move(a)
+    elseif a == 'confirm' then win:pad_activate()
+    elseif a == 'cancel' then
+        if win:pad_back() == 'root' then pad_give() end      -- nothing to go back to: the pad goes back to the game
+    elseif TAB_STEP[a] then
+        local common = require('ui/screens/common')
+        local i = (common.tab_index(app) - 1 + TAB_STEP[a]) % #common.CATS + 1
+        win:pad_click({id = 'navtab', i = i})
+    elseif a == 'sort' or a == 'filter' or a == 'settings' then win:pad_click({id = a})
+    elseif a == 'collapse' then win:toggle_collapse()
+    elseif a == 'page_up' or a == 'page_down' then
+        local vh = win.vp and (win.vp.y1 - win.vp.y0) or 0
+        win:pad_scroll((a == 'page_up' and -1 or 1) * math.max(36, vh - 36))
+    elseif a == 'top' then win:pad_scroll(0, true) end
+end
+
+-- prerender: one read of the pad (numbers, no table); nothing else unless something changed. Not holding the pad, only the
+-- chord is looked for.
+local function pad_tick(now)
+    if settings.pad == false or not (nui.N and nui.N.pad) then return end
+    if not padc.joined then
+        if now < padc.retry_at or not pad_join(now) then return end
+    end
+    local seq, buttons, lt, rt, lx, ly, rx, ry, _, holding = nui.N.pad()
+    if not seq or seq < 0 then return end
+    buttons = buttons or 0
+    if not padc.held then
+        if pad.band(buttons, pad.CHORD) == pad.CHORD and pad.band(padc.prev, pad.CHORD) ~= pad.CHORD then pad_take(buttons) end
+        padc.prev = buttons
+        return
+    end
+    -- the hold lapsed while Lua was not running (a long stall): take it again, and what is held now waits for its release
+    if not holding then
+        nui.N.pad_capture(true)
+        padc.dec:latch(buttons)
+    end
+    padc.prev = buttons
+    local acts, scroll = padc.dec:feed(now, buttons, lt, rt, lx, ly, rx, ry, padc.acts)
+    for i = 1, #acts do
+        pad_act(acts[i])
+        if not padc.held then break end
+    end
+    if padc.held and scroll ~= 0 and win then
+        padc.frac = padc.frac + scroll
+        local whole = padc.frac >= 0 and math.floor(padc.frac) or -math.floor(-padc.frac)
+        if whole ~= 0 then
+            padc.frac = padc.frac - whole
+            win:pad_scroll(whole)
+        end
+    end
+end
+
+local function pad_status_lines()
+    if settings.pad == false then say('controller off (//' .. ident.short .. ' pad on)') return end
+    local st = nui.N and nui.N.pad_status and nui.N.pad_status()
+    if not st then say('controller: _chronicle.dll has no controller support', 167) return end
+    say(('controller %s | %s | %s'):format(padc.held and 'held' or (padc.joined and 'ready (L3+R3)' or 'not joined'),
+        tostring(st.describe), padc.why and ('why: ' .. padc.why) or ('reads ' .. tostring(st.reads))))
+    local ok, back = padc.dec:labels()
+    say(('game pad config: %s | XInput %s | Confirm %s, Cancel %s%s'):format(padc.cfg and padc.cfg.key or 'not found',
+        padc.xinput == nil and '?' or (padc.xinput and 'on' or 'off'), ok, back,
+        #padc.conflicts > 0 and ' | L3/R3 also mapped in the game' or ''))
+end
 
 -- textures: area emblems and the trophy, loaded once and kept (64 px: 16 KB each)
 local tex_cache = {}
@@ -297,6 +435,9 @@ app.prefs = {
         elseif key == 'wintype' then
             settings.wintype = ((settings.wintype or 0) + 1) % 9
             if settings.wintype == 0 then nui.pin_type(nil) else nui.pin_type(settings.wintype) end
+        elseif key == 'pad' then
+            settings.pad = settings.pad == false
+            if settings.pad == false then pad_off() end
         elseif key == 'reset' then
             win.x, win.y, win.w, win.h = 200, 150, 620, 760
             place_window()
@@ -324,8 +465,9 @@ windower.register_event('keyboard', function(dik, down, flags, blocked)
     if win and (nui.drawing or not down) and win:key(dik, down, ch) then return true end
 end)
 
--- a Shift released while the game had no focus never sent its key-up (review UI-7)
-windower.register_event('lose focus', keys.reset)
+-- a Shift released while the game had no focus never sent its key-up (review UI-7); the controller goes back to the game, which
+-- (with "gamepad works when inactive") would otherwise lose it to a window nobody is looking at
+windower.register_event('lose focus', function() keys.reset() pad_give() end)
 windower.register_event('gain focus', keys.reset)
 
 -- the restyle after a change of the game's window type (made once, not a closure every pass)
@@ -336,6 +478,7 @@ local function restyled()
 end
 
 windower.register_event('prerender', function()
+    pad_tick(os.clock())
     if not win then
         if retry.at and os.clock() >= retry.at then
             retry.at = nil
@@ -510,6 +653,7 @@ local function status()
         nui.wt.type, nui.wt.follow and 'auto' or 'pinned', tostring(gt), src or 'not found',
         s.ui_found and (s.ui_w .. 'x' .. s.ui_h) or 'not found', us and ('%.3f'):format(us) or 'not reported',
         s.rt_w, s.rt_h, nui.view.f, nui.view.mode, nui.view.size, nui.view.mf or 1))
+    pad_status_lines()
     if win then
         local st = win.stats
         say(('window %dx%d at %d,%d | sent chrome %d content %d overlay %d, %d unchanged not sent | last layout %.1f ms'):format(
@@ -530,6 +674,7 @@ local HELP = {
     '  //%s scale one | ui | sim <w> <h> | auto | off',
     '  //%s wintype auto | 1-8',
     '  //%s uncompletable   toggle uncompletable quests',
+    '  //%s pad [on | off | status]   take the controller (L3+R3 does too)',
     '  //%s q [area] | m [area]   summaries in chat',
     '  //%s progress [log | debug]   quest step progress',
     '  //%s unknown | debug | status | help',
@@ -618,6 +763,28 @@ windower.register_event('addon command', function(...)
             say('progress: each observation in chat ' .. (progress.debug and 'on' or 'off'))
         else
             for _, key in ipairs(progress.keys()) do say('progress ' .. key .. ':') progress.report(key) end
+        end
+    elseif cmd == 'pad' or cmd == 'controller' then
+        if a == 'on' or a == 'off' then
+            settings.pad = a == 'on'
+            save()
+            if a == 'off' then pad_off() else padc.retry_at = 0 end
+            say('controller ' .. a)
+        elseif a == 'status' then
+            pad_status_lines()
+        elseif settings.pad == false then
+            say('controller off (//' .. ident.short .. ' pad on)', 167)
+        elseif padc.held then
+            pad_give()
+        elseif not pad_join(os.clock()) then
+            local why = tostring(padc.why)
+            if why:find('not loaded', 1, true) then
+                why = why .. '. Turn on Enable XInput in the FFXI Config (Gamepad), or press a pad button first'
+            end
+            say('controller: ' .. why, 167)
+        else
+            local _, b = nui.N.pad()
+            pad_take(b or 0)
         end
     elseif cmd == 'debug' then data.toggle_debug()
     elseif cmd == 'unknown' then data.print_unknown_ids()

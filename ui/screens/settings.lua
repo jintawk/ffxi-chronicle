@@ -22,6 +22,7 @@ local function rows(app)
         {key = 'size', label = 'Size', value = string.format('%.1f', s.size or 1), steps = true},
         {key = 'scale', label = 'Scale', value = pr.scale_name()},
         {key = 'wintype', label = 'Window type', value = wt},
+        {key = 'pad', label = 'Controller (L3+R3)', value = s.pad ~= false and 'On' or 'Off'},
         {key = 'reset', label = 'Place and size', value = 'Reset'},
     }
 end

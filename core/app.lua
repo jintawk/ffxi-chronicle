@@ -53,7 +53,9 @@ function App:go(name, params, scroll_now)
     params = params or {}
     if name == 'guide' and not params.id then params.id = self.data.find_id(params.cat, params.area, params.name) end
     if name == 'guide' then params.name = self.data.canon_name(params.cat, params.area, params.id, params.name) end
-    self.stack[#self.stack + 1] = {name = self.view.name, params = self.view.params, scroll = scroll_now or 0}
+    -- the controller's cursor goes on the stack with the scroll, so back lands on the card or row it left (ui/window.lua)
+    self.stack[#self.stack + 1] = {name = self.view.name, params = self.view.params, scroll = scroll_now or 0,
+                                   cursor = self.win and self.win.cursor_key or nil}
     self.view = {name = name, params = params or {}}
     if self.on_change then self.on_change(0) end
 end
@@ -63,7 +65,7 @@ function App:back()
     local prev = table.remove(self.stack)
     if not prev then return false end
     self.view = {name = prev.name, params = prev.params}
-    if self.on_change then self.on_change(prev.scroll) end
+    if self.on_change then self.on_change(prev.scroll, prev.cursor) end
     return true
 end
 

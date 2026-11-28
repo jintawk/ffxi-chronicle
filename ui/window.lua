@@ -32,10 +32,17 @@
         page this frame (the layer follows the wheel in the same event), further notches in the same frame only change the
         scroll and are drawn by W:tick (W.COALESCE = false: everything at once, the behaviour before).
       - content hits are found through 32 px bands of content y, built once per layout (hit_at; W.BANDS), the same answers as
-        the scan of every hit.]]
+        the scan of every hit.
+
+    The controller (2.2.0). While the pad is Chronicle's, one hit is the cursor (W.cursor; ui/nav.lua moves it) and it is the
+    hover, so every screen's hover drawing shows it; the overlay adds a frame round it and a line of button hints in the bottom
+    margin. A mouse move of more than 3 px over the window gives the hover back to the mouse until the next pad action. The
+    cursor is kept by a key without coordinates (nav.key), so a re-layout finds it again, and going back finds the one the
+    screen was left with (App:go keeps it on the stack).]]
 
 local ops = require('ui/ops')
 local kit = require('ui/kit')
+local nav = require('ui/nav')
 
 local W = {}
 W.__index = W
@@ -109,11 +116,13 @@ function W:set_screen_size(sw, sh)
 end
 
 -- Show a screen. params are kept on the screen's own state; scroll restores a place.
-function W:set_screen(S, scroll)
+function W:set_screen(S, scroll, cursor)
     self.S = S
     self.scroll = scroll or 0
     if self.picture then self:close_picture() end      -- the popup belongs to the screen it was opened on (review UI-5)
     self.hover, self.pressed = nil, nil
+    -- the controller's cursor: the one this screen was left with (back), else the first target in view (W:pad_refind)
+    self.cursor, self.cursor_key, self.cursor_zone, self.cursor_pick, self.parked_at = nil, cursor, 'body', true, nil
     if self.focus and not (S.focusable and S.focusable[self.focus]) then self.focus = nil end
     self:invalidate('all')
 end
@@ -195,6 +204,7 @@ function W:flush()
     if self.want_scroll or self.want_x then self:apply_want() end
     self.pending = nil
     local d = self.dirty
+    local rebuilt = d.chrome or d.content
     if d.chrome then
         local b = ops.new()
         local vp, drag_h = self.S.chrome(b, self:ctx())
@@ -235,6 +245,12 @@ function W:flush()
         d.overlay = true
         self.pure_move = nil
     end
+    -- the cursor's hit is a new table after a layout: found again by its key; a cursor that moved onto or off the chrome
+    -- draws the chrome again (once: the second find is the same key, and changes nothing)
+    if rebuilt and self.pad_mode then
+        self:pad_refind()
+        if d.chrome then return self:flush() end
+    end
     if d.pos then
         self.N.layer_pos(L_CHROME, self.x, self.y)
         if self.content_b and self.vp then
@@ -271,7 +287,11 @@ function W:flush()
             end
             if self.S.sticky then self.S.sticky(b, self:ctx()) end
             kit.grip(b, self.w, self.h, self.resize ~= nil, self.hover and self.hover.resize ~= nil)
+            if self.pad_mode and self.pad_hint then
+                b:text(20, self.h - 18, kit.C.faint, ops.fit(self.pad_hint, self.w - 64))
+            end
         end
+        if self.pad_mode and self.cursor then self:pad_draw(b) end
         local h = self.hover
         if h and h.tip and not h.content and not self.pressed then
             kit.tooltip(b, h.x0, h.y1 + 6, h.tip, {}, nil, self.screen_w - self.x, self.screen_h - self.y, h.y0)
@@ -295,6 +315,7 @@ function W:hide()
     self.hover, self.pressed, self.drag, self.resize, self.focus = nil, nil, nil, nil, nil
     self.want_scroll, self.want_x, self.want_y, self.pending, self.content_wait = nil, nil, nil, nil, nil
     self.picture, self.thumb_drag, self.down = nil, nil, {}     -- the popup layer is cleared below (review UI-5)
+    self.pad_mode, self.cursor = false, nil
     for id = L_CHROME, L_POPUP do forget(self, id) end
 end
 
@@ -409,7 +430,17 @@ function W:mouse(t, x, y, delta, blocked)
     -- a press, release or wheel sees the drag the moves of this frame recorded (W:tick would apply it at the frame's end)
     if t ~= 0 and (self.want_scroll or self.want_x) then self:flush() end
     local lx, ly = x - self.x, y - self.y
+    local mp = self.mouse_px
+    if mp then mp[1], mp[2] = x, y else self.mouse_px = {x, y} end
     if t == 0 then
+        -- the controller has the hover: a jiggle of the mouse leaves it there; a real move gives it back to the mouse
+        if self.pad_mode then
+            local pm = self.pad_mouse
+            if not pm then pm = {x, y} self.pad_mouse = pm end
+            if not self:over(x, y) then pm[1], pm[2] = x, y return false end      -- elsewhere on the screen: not ours
+            if (x - pm[1]) ^ 2 + (y - pm[2]) ^ 2 <= 9 then return false end
+            self:pad_to_mouse()
+        end
         if self.resize then
             local r = self.resize
             local w = r.mode:find('x') and r.vw + x - r.sx or self.w
@@ -644,6 +675,274 @@ function W:key(dik, down, ch)
     self.dirty.chrome = true
     self:flush()
     return true
+end
+
+-- the controller ---------------------------------------------------------------------------------------------------------------
+
+W.PAD_MARGIN = 24           -- a target scrolled into view keeps this much room above or below it
+W.PAD_REACH = 0.5           -- a target further than this many viewports beyond the view is not jumped to: the view steps instead
+W.PAD_STEP = 1 / 3          -- that step, in viewports
+
+local function vh_of(self) return self.vp and (self.vp.y1 - self.vp.y0) or 0 end
+
+-- the first head target in reading order (the lit tab row comes before the controls on its right)
+local function first_head(T)
+    local best
+    for _, c in ipairs(T) do
+        if c.zone == 'head' and (not best or c.y0 < best.y0 or (c.y0 == best.y0 and c.x0 < best.x0)) then best = c end
+    end
+    return best
+end
+
+-- Make c ({h, zone, key, x0..}, or nil) the cursor and the hover. quiet: the same target found again after a layout (nothing to
+-- redraw but the overlay).
+function W:pad_set(c, quiet)
+    local was = self.hover
+    local same = c and c.key == self.cursor_key
+    if c then
+        self.cursor, self.cursor_key, self.cursor_zone = c.h, c.key, c.zone
+        c.h.content = c.zone == 'body' or nil
+        self.cursor_at = {x = c.x0, y = c.y0}
+        self.parked_at = nil
+    else
+        self.cursor, self.cursor_key = nil, nil
+    end
+    self.hover = self.cursor
+    local h = self.cursor
+    if h and h.content and self.vp then          -- content tooltips are anchored at the mouse: put it on the cursor
+        local m = self.mouse_at or {}
+        m.x, m.y = self.vp.x0 + h.x0 + 4, self.vp.y0 + h.y0 - self.scroll
+        self.mouse_at = m
+    end
+    if not (quiet and same) and ((was and not was.content) or (h and not h.content)) then self.dirty.chrome = true end
+    self.dirty.overlay = true
+end
+
+-- after a layout: the cursor's target again (by key), else the nearest one where it was, else (a new screen) the first in view
+function W:pad_refind()
+    local T = nav.targets(self)
+    local c = nav.find(T, self.cursor_key)
+    if not c and self.cursor_pick then
+        local vh = vh_of(self)
+        c = (self.vp and nav.first_in(T, self.scroll, self.scroll + vh)) or first_head(T)
+    elseif not c and self.cursor and self.cursor_at then
+        c = nav.nearest(T, self.cursor_zone, self.cursor_at.x, self.cursor_at.y)
+    end
+    self.cursor_pick = nil
+    if c then self:pad_set(c, true) elseif self.cursor then self:pad_set(nil) end
+end
+
+-- the pad acts: the cursor shows again (after the mouse had the hover)
+function W:pad_wake()
+    if self.pad_mode then return end
+    self.pad_mode = true
+    local mp = self.mouse_px
+    self.pad_mouse = mp and {mp[1], mp[2]} or nil
+    if not self.cursor_key then self.cursor_pick = true end
+    self:pad_refind()
+    self.dirty.chrome, self.dirty.overlay = true, true
+end
+
+-- the mouse moved: it has the hover again; the cursor's key stays for the next pad action
+function W:pad_to_mouse()
+    self.pad_mode = false
+    self.hover = nil
+    self.dirty.chrome, self.dirty.overlay = true, true
+end
+
+-- the pad is Chronicle's (hint: the button line) / given back
+function W:pad_enter(hint)
+    self.pad_held, self.pad_hint = true, hint or self.pad_hint
+    self.pad_mode = false
+    self:pad_wake()
+    self:flush()
+end
+function W:pad_leave()
+    self.pad_held = false
+    if self.pad_mode then
+        self.pad_mode = false
+        if self.hover == self.cursor then self.hover = nil end
+        self.dirty.chrome, self.dirty.overlay = true, true
+        self:flush()
+    end
+end
+
+-- scroll so a body target is in view, with W.PAD_MARGIN of room (a target taller than the view: its top)
+function W:pad_reveal(c)
+    if not (c and c.zone == 'body' and self.vp) then return end
+    local vh = vh_of(self)
+    local m = math.min(W.PAD_MARGIN, math.floor(vh / 4))
+    if c.y0 < self.scroll + m then
+        self:scroll_to(c.y0 - m)
+    elseif c.y1 > self.scroll + vh - m then
+        self:scroll_to(math.min(c.y0 - m, c.y1 - vh + m))
+    end
+    if self.cursor and self.cursor.content then self:pad_set(c, true) end     -- the tooltip follows the scroll
+end
+
+-- the view moved under the cursor (the right stick, a page, the wheel): a body cursor scrolled out of view moves to the first
+-- target in view, or is parked (none in view) until one comes into reach
+function W:pad_follow()
+    if not (self.pad_mode and self.vp) or self.cursor_zone ~= 'body' then return end
+    local vh = vh_of(self)
+    local h = self.cursor
+    -- still in view (the hit's own rectangle, while its layout stands): only the tooltip's anchor moves, no target list
+    if h and h.content and self.content_b and h.y1 > self.scroll and h.y0 < self.scroll + vh then
+        local m = self.mouse_at
+        if m then m.y = self.vp.y0 + h.y0 - self.scroll end
+        self.dirty.overlay = true
+        return
+    end
+    -- parked, with nothing in view at the last look and the view not past it: nothing can have come into view yet
+    if not h and self.parked_at and math.abs(self.scroll - self.parked_at) < 16 then return end
+    local T = nav.targets(self)
+    local c = nav.first_in(T, self.scroll, self.scroll + vh)
+    self.parked_at = (not c) and self.scroll or nil
+    self:pad_set(c)
+end
+
+-- a direction: up, down, left, right
+function W:pad_move(dir)
+    if not self.visible or not self.S then return end
+    self:pad_wake()
+    local T = nav.targets(self)
+    local cur = nav.find(T, self.cursor_key)
+    local vh = vh_of(self)
+    if not cur then
+        if self.cursor_zone == 'head' or not self.vp then
+            self:pad_set(first_head(T))
+            return self:flush()
+        end
+        -- parked in the content: the move starts from the edge of the view it leaves
+        local w = self.vp.x1 - self.vp.x0
+        if dir == 'up' then cur = {zone = 'body', x0 = 0, x1 = w, y0 = self.scroll + vh, y1 = self.scroll + vh + 1}
+        else cur = {zone = 'body', x0 = 0, x1 = w, y0 = self.scroll - 1, y1 = self.scroll} end
+    end
+    local function to_win(x, y) return self:to_win(x, y) end
+    if cur.zone == 'head' then
+        local c = nav.pick(nav.zone(T, 'head'), cur, dir)
+        if not c and dir == 'down' and self.vp then
+            -- into the content: the nearest target in view below
+            local vis = {}
+            for _, b in ipairs(nav.zone(T, 'body', to_win)) do
+                if b.y1 > self.vp.y0 and b.y0 < self.vp.y1 then vis[#vis + 1] = b end
+            end
+            local wc = nav.pick(vis, cur, 'down')
+            c = wc and wc.src
+            if not c and #vis == 0 then
+                self.cursor, self.cursor_key, self.cursor_zone, self.hover = nil, nil, 'body', nil   -- parked in the content
+                self.dirty.chrome, self.dirty.overlay = true, true
+                return self:pad_move('down')
+            end
+        end
+        if c then self:pad_set(c) end
+        return self:flush()
+    end
+    local c = nav.pick(nav.zone(T, 'body'), cur, dir)
+    local reach = vh * W.PAD_REACH
+    local step = math.max(18, math.floor(vh * W.PAD_STEP))
+    local maxs = math.max(0, (self.content_h or 0) - vh)
+    if dir == 'down' then
+        if c and c.y0 <= self.scroll + vh + reach then self:pad_set(c) self:pad_reveal(c)
+        elseif self.scroll < maxs then self:scroll_to(self.scroll + step) self:pad_follow()
+        elseif c then self:pad_set(c) self:pad_reveal(c) end
+    elseif dir == 'up' then
+        if c and c.y1 >= self.scroll - reach then self:pad_set(c) self:pad_reveal(c)
+        elseif self.scroll > 0 then self:scroll_to(self.scroll - step) self:pad_follow()
+        elseif c then self:pad_set(c) self:pad_reveal(c)
+        else
+            -- the top of the content: up into the header, from where the cursor is on screen
+            local x0, y0 = self:to_win(cur.x0, math.max(cur.y0, self.scroll))
+            local x1 = self:to_win(cur.x1, 0)
+            local h = nav.pick(nav.zone(T, 'head'), {x0 = x0, y0 = y0, x1 = x1, y1 = y0 + 1}, 'up')
+            if h then self:pad_set(h) end
+        end
+    elseif c then
+        self:pad_set(c)
+        self:pad_reveal(c)
+    end
+    self:flush()
+end
+
+-- Confirm: what a click on the cursor does (the search box takes the keyboard, as a click on it does); closes an enlarged picture
+function W:pad_activate()
+    if not self.visible or not self.S then return end
+    if self.picture then self:close_picture() return self:flush() end
+    self:pad_wake()
+    local h = self.cursor
+    if not h then return self:flush() end
+    if h.id == 'search' then
+        if self.S.focusable and self.S.focusable.search then
+            self.focus = 'search'
+            self.caret, self.next_caret = true, 0
+            self.dirty.chrome = true
+        end
+        return self:flush()
+    end
+    if self.S.click then self.S.click(h, self:ctx(), self.app) end
+    self:flush()
+end
+
+-- Cancel: closes the picture, leaves the search box, or goes back. -> 'root' when there is nowhere to go back to
+function W:pad_back()
+    if not self.visible or not self.S then return nil end
+    if self.picture then self:close_picture() self:flush() return nil end
+    if self.focus then
+        self.focus = nil
+        self.dirty.chrome = true
+        self:flush()
+        return nil
+    end
+    local app = self.app
+    if app and app.stack and #app.stack == 0 then return 'root' end
+    self:pad_wake()
+    if self.S.right then self.S.right(nil, self:ctx(), app) end
+    self:flush()
+    return nil
+end
+
+-- a control that is not the cursor (Sort, Show, Settings, a tab): the screen's click for a hit with that id
+function W:pad_click(hit)
+    if not self.visible or not self.S then return end
+    if self.picture then self:close_picture() end
+    self:pad_wake()
+    if self.S.click then self.S.click(hit, self:ctx(), self.app) end
+    self:flush()
+end
+
+-- scroll by dy px (the right stick, a page, the top); the cursor follows
+function W:pad_scroll(dy, absolute)
+    if not self.visible or not self.vp then return end
+    self:pad_wake()
+    self:scroll_to(absolute and dy or (self.scroll + dy))
+    self:pad_follow()
+    self:flush()
+end
+
+-- the cursor's frame: round the target (every rectangle of a wrapped link), over the content's own hover
+function W:pad_draw(b)
+    local h = self.cursor
+    local col = kit.C.press_edge
+    if h.content and self.vp and self.content_b then
+        local vp = self.vp
+        b:clip(vp.x0 - 4, vp.y0, vp.x1 + 4, vp.y1)
+        if h.span then
+            for _, r in ipairs(self.content_b.hits) do
+                if r.span == h.span then
+                    local x0, y0 = self:to_win(r.x0, r.y0)
+                    local x1, y1 = self:to_win(r.x1, r.y1)
+                    kit.frame(b, x0 - 2, y0 - 1, x1 + 2, y1 + 1, col)
+                end
+            end
+        else
+            local x0, y0 = self:to_win(h.x0, h.y0)
+            local x1, y1 = self:to_win(h.x1, h.y1)
+            kit.frame(b, x0 - 1, y0 - 1, x1 + 1, y1 + 1, col)
+        end
+        b:unclip()
+    elseif not h.content then
+        kit.frame(b, h.x0 - 2, h.y0 - 2, h.x1 + 2, h.y1 + 2, col)
+    end
 end
 
 return W

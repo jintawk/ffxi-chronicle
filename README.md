@@ -20,6 +20,7 @@ game's interface, in whichever of the eight window styles you have set in the ga
 - [Features](#features)
 - [Installation](#installation)
 - [Using it](#using-it)
+- [With a controller](#with-a-controller)
 - [Commands](#commands)
 - [What is tracked](#what-is-tracked)
 - [Walkthroughs](#walkthroughs)
@@ -45,6 +46,7 @@ game's interface, in whichever of the eight window styles you have set in the ga
   boss tables, maps and tabbed panels
 - The game's window art in any of its eight window styles, following the game's Config
 - Drag to move, drag an edge or the corner to resize, with the text re-wrapping and your place kept
+- A controller works too: press both sticks, and the D-pad moves a cursor over everything you could click
 - Window place and size saved per character and per screen size
 
 ## Installation
@@ -106,6 +108,45 @@ jumping to the top.
 
 ![A long page scrolling](media/scroll.gif)
 
+## With a controller
+
+Press **L3 and R3 together** (both sticks in) to give the controller to Chronicle; press them again to give
+it back. While Chronicle has it, the game does not see what you press, so the D-pad moves Chronicle's cursor
+and not the game's.
+
+| Button | What it does |
+|---|---|
+| D-pad or left stick | Move the cursor: cards, rows, buttons, links, path tabs |
+| Confirm (A) | Open what the cursor is on |
+| Cancel (B) | Back. On a section's home, it gives the controller back to the game |
+| LB / RB | The previous or next section: Missions, Quests, Records |
+| LT / RT | A page up or down |
+| Right stick | Scroll |
+| X / Y | Sort / Show, on a list |
+| Start | Settings |
+| Back | Collapse or expand |
+| R3 | The top of the page |
+
+Confirm and Cancel are the buttons you set in the game's own pad config, so if your Confirm is B, Chronicle's
+is too. A line at the bottom of the window names them while Chronicle has the controller.
+
+On a long walkthrough, the D-pad goes from link to link. Where there is a long stretch of text with nothing to
+click, it scrolls by a third of a page instead, so you can read the whole page with it. Going back puts the
+cursor on the card or row you came from.
+
+A button you were already holding when you pressed L3 + R3 still belongs to the game until you let go of it, and
+a button you pressed while Chronicle had the controller stays away from the game until you let go of it, even if
+you give the controller back first. The game never sees half a press. Moving the mouse over the window gives the
+hover back to the mouse until you next use the controller.
+
+The controller has to be in the game's **XInput** mode: in the FFXI Config, on the Gamepad tab, turn on Enable
+XInput. Chronicle reads the controller only the way the game reads it, and in DirectInput mode it does not read
+it at all. `//cr pad status` says whether it is reading the controller, and why not. Steam Input can remap a pad
+behind the game's back, so turn it off for FFXI.
+
+`//cr pad` does what L3 + R3 does, so it can be bound to a key with Windower's `bind`. `//cr pad off` stops
+Chronicle reading the controller at all, and the Settings screen has the same switch.
+
 ## Commands
 
 | Command | What it does |
@@ -122,6 +163,7 @@ jumping to the top.
 | `//cr scale one \| ui \| sim <w> <h> \| auto \| off` | Draw scale: 1:1, the game's UI size, or a simulated screen |
 | `//cr wintype auto \| 1-8` | Follow the game's window style, or pin one |
 | `//cr uncompletable` | Show quests that can no longer be done |
+| `//cr pad [on \| off \| status]` | Take or give back the controller (as L3 + R3), turn it on or off, or say why it is not working |
 | `//cr q [area]` / `m [area]` | Summaries in the chat log |
 | `//cr status` | Drawing, memory and hook details |
 | `//cr progress` / `unknown` / `debug` / `help` | Diagnostics and help |
@@ -238,6 +280,13 @@ can run together whatever versions they were built against.
 
 If a game update moves the code it hooks, it patches nothing and draws nothing rather than guessing,
 and `//cr status` reports why.
+
+The controller comes from the same library. No Windower API gives an addon the controller, so nui hooks the one
+function the game reads an XInput pad with, `XInputGetState`, once per process, in the form Windows itself uses
+for hot patches. Any addon built on nui shares that one hook. While no addon holds the controller, the hook only
+looks: the game gets exactly what it read. If the function is not where and what nui expects (another tool has
+hooked it, say), nui leaves it alone and `//cr pad status` says so. If Chronicle stops answering, the game gets
+its controller back by itself within a quarter of a second.
 
 ## Upgrading from version 1
 

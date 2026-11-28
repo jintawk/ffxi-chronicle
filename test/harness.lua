@@ -103,6 +103,25 @@ function H.fake_native(opts)
     function N.wtread() return opts.game_type end
     function N.wtfind() return 0, {} end
     function N.wtwatch() return true end
+    -- the controller (nui 1.3.0): N.padstate is what the game "read" (set its fields and bump seq), N.pad_holding the capture.
+    -- opts.pad_fail: pad_start fails with that message (opts.pad_retry_ms: and asks to be retried); opts.pad_config: pad_config()
+    N.padstate = {seq = 1, buttons = 0, lt = 0, rt = 0, lx = 0, ly = 0, rx = 0, ry = 0}
+    N.pad_holding, N.pad_joined, N.captures, N.pad_starts = false, false, 0, 0
+    function N.pad_start()
+        N.pad_starts = N.pad_starts + 1
+        if opts.pad_fail then return false, opts.pad_fail, opts.pad_retry_ms end
+        N.pad_joined = true
+        return true, 'hook installed'
+    end
+    function N.pad()
+        if not N.pad_joined then return nil end
+        local p = N.padstate
+        return p.seq, p.buttons, p.lt, p.rt, p.lx, p.ly, p.rx, p.ry, 0, N.pad_holding
+    end
+    function N.pad_capture(on) N.pad_holding = on and true or false N.captures = N.captures + 1 return true end
+    function N.pad_config() return opts.pad_config end
+    function N.pad_status() return {state = 'live', describe = 'fake pad', reads = 0, holding = N.pad_holding} end
+    function N.pad_stop() N.pad_joined, N.pad_holding = false, false return 'stopped' end
     return N
 end
 
