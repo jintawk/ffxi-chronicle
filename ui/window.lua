@@ -34,7 +34,7 @@
       - content hits are found through 32 px bands of content y, built once per layout (hit_at; W.BANDS), the same answers as
         the scan of every hit.
 
-    The controller (2.2.0). While the pad is Chronicle's, one hit is the cursor (W.cursor; ui/nav.lua moves it) and it is the
+    The controller (2.3.0). While the pad is Chronicle's, one hit is the cursor (W.cursor; ui/nav.lua moves it) and it is the
     hover, so every screen's hover drawing shows it; the overlay adds a frame round it and a line of button hints in the bottom
     margin. A mouse move of more than 3 px over the window gives the hover back to the mouse until the next pad action. The
     cursor is kept by a key without coordinates (nav.key), so a re-layout finds it again, and going back finds the one the
