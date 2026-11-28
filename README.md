@@ -184,8 +184,9 @@ keys of whichever one you used last.
 
 Chronicle gives the keys back when you hide the window, log out, unload it, or switch to another window. If the
 keyboard ever seems stuck, switch to another window and back.
-`//cr nav` does what K does, so you can bind it to another key with Windower's `bind`. With `//cr nav off`, K no
-longer takes the keys, and the Settings screen has the same switch.
+`//cr nav` does what K does, so you can bind it to another key with Windower's `bind`. While Chronicle has the keys,
+Windower runs no bind at all, so that key cannot give the keys back. Use K, or Escape or Backspace on a section's
+home. With `//cr nav off`, K no longer takes the keys, and the Settings screen has the same switch.
 
 ## Commands
 
