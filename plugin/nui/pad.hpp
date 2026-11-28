@@ -1,10 +1,11 @@
 // pad.hpp - the controller half of the module table: the pad the game reads, through the
 // shared PadHook (PadHook/PadHook.h), and holding it while the addon uses it.
 //
-//   pad_start([flags]) -> ok, msg [, retry_ms]   join the hook (patching XInputGetState if nobody has).
-//        retry_ms while xinput1_3.dll is not loaded (the game reads the pad with DirectInput, or has not
-//        read it yet); no retry_ms when it can never work in this process (not hot-patchable, another
-//        hook). flags "nosig": the not-loaded path, always (the fail-closed test).
+//   pad_start([flags]) -> ok, msg [, retry_ms]   join the hook, patching it if nobody has: the client's own
+//        XInput wrapper in FFXiMain.dll first (route 1), else xinput1_3.dll!XInputGetState (route 0).
+//        retry_ms while neither can be patched yet (no wrapper, and xinput1_3.dll not loaded); no retry_ms
+//        when it can never work in this process (no wrapper, and the export not hot-patchable or already
+//        hooked). flags "nosig": the not-found path, always (the fail-closed test).
 //   pad() -> seq, buttons, lt, rt, lx, ly, rx, ry, index, holding
 //        what the game last read, raw (before the mask), from the user index that last read connected.
 //        seq changes with every change; 0 = no pad read yet. buttons: XINPUT_GAMEPAD_* bits, and
